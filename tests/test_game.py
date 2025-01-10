@@ -18,6 +18,6 @@ def test_path_validation():
         "Player 2": Player("Player 2", (8, 4), 0),
     }
     assert board.place_wall("horizontal", (4, 4), players) is True
-    assert board.place_wall("horizontal", (4, 5), players) is True
+    assert board.place_wall("horizontal", (4, 6), players) is True
     # Adding a blocking wall should return False
-    # assert board.place_wall("horizontal", (4, 6), players) is False
+    assert board.place_wall("horizontal", (4, 5), players) is False

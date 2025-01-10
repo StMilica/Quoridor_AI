@@ -12,16 +12,17 @@ class Board:
 
     def place_wall(self, wall_type, position, players):
         """Place a wall on the board if valid and ensure it does not block all paths."""
+        x, y = position
         if not self.is_within_bounds(position):
             return False
 
         # Simulate placing the wall
         if wall_type == 'horizontal':
-            if position in self.horizontal_walls:
+            if any(pos in self.horizontal_walls for pos in [(x, y), (x, y - 1), (x, y + 1)]):
                 return False
             self.horizontal_walls.append(position)
         elif wall_type == 'vertical':
-            if position in self.vertical_walls:
+            if any(pos in self.horizontal_walls for pos in [(x, y), (x - 1, y), (x + 1, y)]):
                 return False
             self.vertical_walls.append(position)
         else:
@@ -76,16 +77,16 @@ class Board:
         x2, y2 = position2
 
         if x1 == x2:  # Horizontal movement
-            if x1 == x2 and y2 > y1:  # Moving right
-                return (x1, y1) in self.vertical_walls
-            if x1 == x2 and y1 > y2:  # Moving left
-                return (x1, y2) in self.vertical_walls
+            if y2 > y1:  # Moving right
+                return (x1, y1) in self.vertical_walls or (x1 - 1, y1) in self.vertical_walls
+            if y1 > y2:  # Moving left
+                return (x1, y2) in self.vertical_walls or (x1 - 1, y2) in self.vertical_walls
 
         elif y1 == y2:  # Vertical movement
-            if y1 == y2 and x2 > x1:  # Moving down
-                return (x1, y1) in self.horizontal_walls
-            if y1 == y2 and x1 > x2:  # Moving up
-                return (x2, y1) in self.horizontal_walls
+            if x2 > x1:  # Moving down
+                return (x1, y1) in self.horizontal_walls or (x1, y1 - 1) in self.horizontal_walls
+            if x1 > x2:  # Moving up
+                return (x2, y1) in self.horizontal_walls or (x2, y1 - 1) in self.horizontal_walls
 
         return False
 
