@@ -1,104 +1,93 @@
 class Board:
     def __init__(self):
-        self.size = 9  # 9x9 grid
-        self.grid = [[0] * self.size for _ in range(self.size)]  # 0 represents empty spaces
-        self.horizontal_walls = []  # Store horizontal walls
-        self.vertical_walls = []    # Store vertical walls
+        # 9x9 grid for player positions
+        self.player_positions = [
+            [{"occupied": False, "can_be_occupied": True, "player": None} for _ in range(9)]
+            for _ in range(9)
+        ]
 
-    def is_within_bounds(self, position):
-        """Check if a position is within the board."""
-        x, y = position
-        return 0 <= x < self.size and 0 <= y < self.size
+        # 8x9 grid for horizontal walls
+        self.horizontal_walls = [
+            [{"occupied": False, "can_be_occupied": True} for _ in range(9)]
+            for _ in range(8)
+        ]
 
-    def place_wall(self, wall_type, position, players):
-        """Place a wall on the board if valid and ensure it does not block all paths."""
-        x, y = position
-        if not self.is_within_bounds(position):
-            return False
+        # 9x8 grid for vertical walls
+        self.vertical_walls = [
+            [{"occupied": False, "can_be_occupied": True} for _ in range(8)]
+            for _ in range(9)
+        ]
 
-        # Simulate placing the wall
-        if wall_type == 'horizontal':
-            if any(pos in self.horizontal_walls for pos in [(x, y), (x, y - 1), (x, y + 1)]):
-                return False
-            self.horizontal_walls.append(position)
-        elif wall_type == 'vertical':
-            if any(pos in self.horizontal_walls for pos in [(x, y), (x - 1, y), (x + 1, y)]):
-                return False
-            self.vertical_walls.append(position)
-        else:
-            return False
+    def _validate_position(self, row, col, max_rows, max_cols):
+        if not (0 <= row < max_rows and 0 <= col < max_cols):
+            raise ValueError(f"Invalid position: ({row}, {col})")
 
-        # Check if the wall blocks all paths for any player
-        if not self._all_paths_valid(players):
-            # Remove the wall if it blocks all paths
-            if wall_type == 'horizontal':
-                self.horizontal_walls.remove(position)
-            elif wall_type == 'vertical':
-                self.vertical_walls.remove(position)
-            return False
+    def update_player_position(self, row, col, occupied, player=None):
+        self._validate_position(row, col, 9, 9)
+        self.player_positions[row][col]["occupied"] = occupied
+        self.player_positions[row][col]["can_be_occupied"] = not occupied
+        self.player_positions[row][col]["player"] = player if occupied else None
 
-        return True
+    def update_horizontal_wall(self, row, col, occupied):
+        """Update the occupation status of a horizontal wall position."""
+        if 0 <= row < 8 and 0 <= col < 9:
+            if occupied:
+                self.horizontal_walls[row][col]["occupied"] = True
+                self.horizontal_walls[row][col]["can_be_occupied"] = False
 
-    def _all_paths_valid(self, players):
-        """Check if all players still have a valid path to their goal."""
-        for player in players.values():
-            if not self._has_path_to_goal(player.position, player.goal_row):
-                return False
-        return True
+                # Update adjacent horizontal wall
+                if col > 0:
+                    self.horizontal_walls[row][col - 1]["can_be_occupied"] = False
+                if col < 8:
+                    self.horizontal_walls[row][col + 1]["can_be_occupied"] = False
 
-    def _has_path_to_goal(self, start, goal_row):
-        """Check if a player has a valid path to their goal row using BFS."""
-        from collections import deque
+                # Update overlapping vertical walls
+                if row < 9:
+                    self.vertical_walls[row][col]["can_be_occupied"] = False
+                if col < 8 and row < 9:
+                    self.vertical_walls[row][col + 1]["can_be_occupied"] = False
+            else:
+                self.horizontal_walls[row][col]["occupied"] = False
 
-        queue = deque([start])
-        visited = set()
-        visited.add(start)
+    def update_vertical_wall(self, row, col, occupied):
+        """Update the occupation status of a vertical wall position."""
+        if 0 <= row < 9 and 0 <= col < 8:
+            if occupied:
+                self.vertical_walls[row][col]["occupied"] = True
+                self.vertical_walls[row][col]["can_be_occupied"] = False
 
-        while queue:
-            x, y = queue.popleft()
+                # Update adjacent vertical wall
+                if row > 0:
+                    self.vertical_walls[row - 1][col]["can_be_occupied"] = False
+                if row < 8:
+                    self.vertical_walls[row + 1][col]["can_be_occupied"] = False
 
-            # Check if the current position is on the goal row
-            if x == goal_row:
-                return True
+                # Update overlapping horizontal walls
+                if col < 9:
+                    self.horizontal_walls[row][col]["can_be_occupied"] = False
+                if row < 8 and col < 9:
+                    self.horizontal_walls[row + 1][col]["can_be_occupied"] = False
+            else:
+                self.vertical_walls[row][col]["occupied"] = False
 
-            # Explore neighbors
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                nx, ny = x + dx, y + dy
-                if (nx, ny) not in visited and self.is_within_bounds((nx, ny)):
-                    if not self.is_path_blocked((x, y), (nx, ny)):
-                        visited.add((nx, ny))
-                        queue.append((nx, ny))
+    def print_board(self):
+        """Print the current state of the board (for debugging)."""
+        print("Player Positions:")
+        for row in self.player_positions:
+            print([["P" + str(cell["player"]) if cell["occupied"] else "-" for cell in row]])
 
-        return False
+        print("\nHorizontal Walls:")
+        for row in self.horizontal_walls:
+            print([["H" if cell["occupied"] else "-" for cell in row]])
 
-    def is_path_blocked(self, position1, position2):
-        """Check if a wall blocks the direct path between two positions."""
-        x1, y1 = position1
-        x2, y2 = position2
+        print("\nVertical Walls:")
+        for row in self.vertical_walls:
+            print([["V" if cell["occupied"] else "-" for cell in row]])
 
-        if x1 == x2:  # Horizontal movement
-            if y2 > y1:  # Moving right
-                return (x1, y1) in self.vertical_walls or (x1 - 1, y1) in self.vertical_walls
-            if y1 > y2:  # Moving left
-                return (x1, y2) in self.vertical_walls or (x1 - 1, y2) in self.vertical_walls
-
-        elif y1 == y2:  # Vertical movement
-            if x2 > x1:  # Moving down
-                return (x1, y1) in self.horizontal_walls or (x1, y1 - 1) in self.horizontal_walls
-            if x1 > x2:  # Moving up
-                return (x2, y1) in self.horizontal_walls or (x2, y1 - 1) in self.horizontal_walls
-
-        return False
-
-    def display_board(self, players):
-        """Print a text-based representation of the board."""
-        board = [['.' for _ in range(self.size)] for _ in range(self.size)]
-
-        # Mark player positions
-        for player, position in players.items():
-            x, y = position
-            board[x][y] = player[0]  # Use the first letter of the player's name
-
-        # Print the board
-        for row in board:
-            print(' '.join(row))
+# Example usage:
+if __name__ == "__main__":
+    board = Board()
+    board.update_player_position(0, 0, True, player=1)
+    board.update_horizontal_wall(1, 1, True)
+    board.update_vertical_wall(1, 1, True)
+    board.print_board()
