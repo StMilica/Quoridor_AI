@@ -30,8 +30,8 @@ class Matrix:
         self.data[row][col] = value
 
     def move_item(self, current_position, new_position):
-        current_row, current_col = current_position.row, current_position.col
-        new_row, new_col = new_position.row, new_position.col
+        current_row, current_col = current_position
+        new_row, new_col = new_position
         if not self.is_in_bounds(current_position) or not self.is_in_bounds(new_position):
             raise IndexError("Position out of bounds")
         self.data[new_row][new_col] = self.data[current_row][current_col]

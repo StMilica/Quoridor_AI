@@ -1,6 +1,7 @@
 from enum import Enum
 from utils.types import Position, Matrix
 from abc import ABC, abstractmethod
+from collections import deque
 
 # Types
 
@@ -25,7 +26,7 @@ class Field:
 class WallSlot:
     def __init__(self, occupied=False, can_be_occupied=True):
         self.occupied = occupied
-        self.can_be_occupied = True
+        self.can_be_occupied = can_be_occupied
         self.wall = None
 
 
@@ -53,13 +54,41 @@ class Board(BoardBase):
 
     def move_pawn(self, pawn, new_position):
         """Move a pawn to a new position."""
+        if not self.is_valid_pawn_move(pawn.position, new_position):
+            raise ValueError("Invalid move")
         self.fields.move_item(pawn.position, new_position)
+        pawn.position = new_position
+
+    def is_valid_pawn_move(self, current_position, new_position):
+        """Check if a move is valid according to the game rules."""
+        row_diff = abs(current_position.row - new_position.row)
+        col_diff = abs(current_position.col - new_position.col)
+
+        if row_diff + col_diff != 1:
+            return False  # Only allow moves to adjacent cells
+
+        if self.fields[new_position].pawn is not None:
+            return False  # Cannot move to a cell occupied by another pawn
+
+        # Check for walls blocking the move
+        if row_diff == 1:
+            if current_position.row < new_position.row:
+                return not self.horizontal_wall_slots[current_position].occupied
+            else:
+                return not self.horizontal_wall_slots[new_position].occupied
+        elif col_diff == 1:
+            if current_position.col < new_position.col:
+                return not self.vertical_wall_slots[current_position].occupied
+            else:
+                return not self.vertical_wall_slots[new_position].occupied
+
+        return True
 
     def place_wall(self, orientation, position):
         """Place a wall at a given position."""
+        if not self.can_place_wall_at_position(orientation, position):
+            raise ValueError("Cannot place wall at this position")
         if orientation == WallOrientation.HORIZONTAL:
-            if not self.can_place_wall_at_position(orientation, position):
-                raise ValueError("Horizontal wall slot already occupied")
             self.horizontal_wall_slots[position].occupied = True
             next_adjacent_position = Position(position.row, position.col + 1)
             if self.horizontal_wall_slots.is_in_bounds(next_adjacent_position):
@@ -67,8 +96,6 @@ class Board(BoardBase):
             self.vertical_wall_slots[position].can_be_occupied = False
 
         elif orientation == WallOrientation.VERTICAL:
-            if not self.can_place_wall_at_position(orientation, position):
-                raise ValueError("Vertical wall slot already occupied")
             self.vertical_wall_slots[position].occupied = True
             next_adjacent_position = Position(position.row + 1, position.col)
             if self.vertical_wall_slots.is_in_bounds(next_adjacent_position):
@@ -97,6 +124,41 @@ class Board(BoardBase):
                 and not self.horizontal_wall_slots[position].occupied
             )
 
+    def is_path_blocked(self, start_position, end_position):
+        """Check if a path is blocked by walls using BFS."""
+        directions = [
+            (0, 1),  # right
+            (1, 0),  # down
+            (0, -1), # left
+            (-1, 0)  # up
+        ]
+
+        visited = set()
+        queue = deque([start_position])
+
+        while queue:
+            current_position = queue.popleft()
+            if current_position == end_position:
+                return False  # Path is not blocked
+
+            for direction in directions:
+                new_row = current_position.row + direction[0]
+                new_col = current_position.col + direction[1]
+                new_position = Position(new_row, new_col)
+
+                if not self.fields.is_in_bounds(new_position):
+                    continue
+
+                if new_position in visited:
+                    continue
+
+                if not self.is_valid_move(current_position, new_position):
+                    continue
+
+                visited.add(new_position)
+                queue.append(new_position)
+
+        return True  # Path is blocked
 
 # Example usage:
 
