@@ -85,7 +85,6 @@ class Board(BoardBase):
                 and self.horizontal_wall_slots[adjacent_horizontal_slot_position].can_be_occupied
                 and not self.horizontal_wall_slots[adjacent_horizontal_slot_position].occupied
                 and not self.vertical_wall_slots[position].occupied
-                and self.vertical_wall_slots[position].can_be_occupied
             )
         
         elif orientation == WallOrientation.VERTICAL:
@@ -96,27 +95,30 @@ class Board(BoardBase):
                 and self.vertical_wall_slots[adjacent_vertical_slot_position].can_be_occupied
                 and not self.vertical_wall_slots[adjacent_vertical_slot_position].occupied
                 and not self.horizontal_wall_slots[position].occupied
-                and self.horizontal_wall_slots[position].can_be_occupied
             )
 
-    def print_board(self):
-        """Print the current state of the board (for debugging)."""
-        print("Player Positions:")
-        for row in self.fields.data:
-            print([["P" + str(cell.player) if cell.occupied else "-" for cell in row]])
-
-        print("\nHorizontal Walls:")
-        for row in self.horizontal_wall_slots.data:
-            print([["H" if cell.occupied else "-" for cell in row]])
-
-        print("\nVertical Walls:")
-        for row in self.vertical_wall_slots.data:
-            print([["V" if cell.occupied else "-" for cell in row]])
 
 # Example usage:
+
 if __name__ == "__main__":
     board = Board()
-    board.move_pawn(0, 0, True, player=1)
-    board.place_horizontal_wall(1, 1, True)
-    board.place_vertical_wall(1, 1, True)
-    board.print_board()
+
+    # Move pawn 1 to a new position
+    new_position_pawn1 = Position(1, 4)
+    board.move_pawn(board.pawn1, new_position_pawn1)
+    print(f"Pawn 1 moved to {new_position_pawn1}")
+
+    # Move pawn 2 to a new position
+    new_position_pawn2 = Position(7, 4)
+    board.move_pawn(board.pawn2, new_position_pawn2)
+    print(f"Pawn 2 moved to {new_position_pawn2}")
+
+    # Place a horizontal wall
+    wall_position_horizontal = Position(4, 4)
+    board.place_wall(WallOrientation.HORIZONTAL, wall_position_horizontal)
+    print(f"Horizontal wall placed at {wall_position_horizontal}")
+
+    # Place a vertical wall
+    wall_position_vertical = Position(5, 5)
+    board.place_wall(WallOrientation.VERTICAL, wall_position_vertical)
+    print(f"Vertical wall placed at {wall_position_vertical}")
