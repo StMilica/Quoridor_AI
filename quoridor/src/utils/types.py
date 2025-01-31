@@ -6,6 +6,14 @@ class Position:
 
     def __iter__(self):
         return iter((self.row, self.col))
+    
+    def __eq__(self, other):
+        if isinstance(other, Position):
+            return self.row == other.row and self.col == other.col
+        return False
+
+    def __repr__(self):
+        return f"Position(row={self.row}, col={self.col})"
 
 class Matrix:
     def __init__(self, rows, cols, default_value=None):

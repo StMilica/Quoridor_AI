@@ -1,5 +1,5 @@
 from enum import Enum
-from utils.types import Position, Matrix
+from .utils.types import Position, Matrix
 from abc import ABC, abstractmethod
 from collections import deque
 
@@ -64,25 +64,81 @@ class Board(BoardBase):
         row_diff = abs(current_position.row - new_position.row)
         col_diff = abs(current_position.col - new_position.col)
 
-        if row_diff + col_diff != 1:
-            return False  # Only allow moves to adjacent cells
+        if row_diff + col_diff == 1:
+            # Normal move to adjacent cell
+            if self.fields[new_position].pawn is not None:
+                return False  # Cannot move to a cell occupied by another pawn
 
-        if self.fields[new_position].pawn is not None:
-            return False  # Cannot move to a cell occupied by another pawn
+            # Check for walls blocking the move
+            if row_diff == 1:
+                if current_position.row < new_position.row:
+                    return not self.horizontal_wall_slots[current_position].occupied
+                else:
+                    return not self.horizontal_wall_slots[new_position].occupied
+            elif col_diff == 1:
+                if current_position.col < new_position.col:
+                    return not self.vertical_wall_slots[current_position].occupied
+                else:
+                    return not self.vertical_wall_slots[new_position].occupied
 
-        # Check for walls blocking the move
-        if row_diff == 1:
-            if current_position.row < new_position.row:
-                return not self.horizontal_wall_slots[current_position].occupied
-            else:
-                return not self.horizontal_wall_slots[new_position].occupied
-        elif col_diff == 1:
-            if current_position.col < new_position.col:
-                return not self.vertical_wall_slots[current_position].occupied
-            else:
-                return not self.vertical_wall_slots[new_position].occupied
+        elif row_diff + col_diff == 2:
+            # Jump over an adjacent pawn
+            mid_row = (current_position.row + new_position.row) // 2
+            mid_col = (current_position.col + new_position.col) // 2
+            mid_position = Position(mid_row, mid_col)
 
-        return True
+            if self.fields[mid_position].pawn is None:
+                return False  # No pawn to jump over
+
+            # Check for walls blocking the jump
+            if row_diff == 2:
+                if current_position.row < new_position.row:
+                    if self.horizontal_wall_slots[mid_position].occupied:
+                        # Check for left or right move
+                        left_position = Position(mid_row, mid_col - 1)
+                        right_position = Position(mid_row, mid_col + 1)
+                        if self.fields.is_in_bounds(left_position) and not self.vertical_wall_slots[left_position].occupied:
+                            return new_position == left_position
+                        if self.fields.is_in_bounds(right_position) and not self.vertical_wall_slots[mid_position].occupied:
+                            return new_position == right_position
+                        return False
+                    return not self.horizontal_wall_slots[mid_position].occupied
+                else:
+                    if self.horizontal_wall_slots[new_position].occupied:
+                        # Check for left or right move
+                        left_position = Position(mid_row, mid_col - 1)
+                        right_position = Position(mid_row, mid_col + 1)
+                        if self.fields.is_in_bounds(left_position) and not self.vertical_wall_slots[left_position].occupied:
+                            return new_position == left_position
+                        if self.fields.is_in_bounds(right_position) and not self.vertical_wall_slots[mid_position].occupied:
+                            return new_position == right_position
+                        return False
+                    return not self.horizontal_wall_slots[new_position].occupied
+            elif col_diff == 2:
+                if current_position.col < new_position.col:
+                    if self.vertical_wall_slots[mid_position].occupied:
+                        # Check for up or down move
+                        up_position = Position(mid_row - 1, mid_col)
+                        down_position = Position(mid_row + 1, mid_col)
+                        if self.fields.is_in_bounds(up_position) and not self.horizontal_wall_slots[up_position].occupied:
+                            return new_position == up_position
+                        if self.fields.is_in_bounds(down_position) and not self.horizontal_wall_slots[mid_position].occupied:
+                            return new_position == down_position
+                        return False
+                    return not self.vertical_wall_slots[mid_position].occupied
+                else:
+                    if self.vertical_wall_slots[new_position].occupied:
+                        # Check for up or down move
+                        up_position = Position(mid_row - 1, mid_col)
+                        down_position = Position(mid_row + 1, mid_col)
+                        if self.fields.is_in_bounds(up_position) and not self.horizontal_wall_slots[up_position].occupied:
+                            return new_position == up_position
+                        if self.fields.is_in_bounds(down_position) and not self.horizontal_wall_slots[mid_position].occupied:
+                            return new_position == down_position
+                        return False
+                    return not self.vertical_wall_slots[new_position].occupied
+
+        return False
 
     def place_wall(self, orientation, position):
         """Place a wall at a given position."""
@@ -109,8 +165,8 @@ class Board(BoardBase):
             return (
                 not self.horizontal_wall_slots[position].occupied
                 and self.horizontal_wall_slots[position].can_be_occupied
-                and self.horizontal_wall_slots[adjacent_horizontal_slot_position].can_be_occupied
                 and not self.horizontal_wall_slots[adjacent_horizontal_slot_position].occupied
+                and self.horizontal_wall_slots[adjacent_horizontal_slot_position].can_be_occupied
                 and not self.vertical_wall_slots[position].occupied
             )
         

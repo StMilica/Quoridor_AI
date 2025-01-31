@@ -1,85 +1,117 @@
 import pytest
-from quoridor.src.board import Board, Field, WallSlot
+from quoridor.src.board import Board, Position, WallOrientation
 
 @pytest.fixture
 def board():
     return Board()
 
-def test_initial_state(board):
-    """Test the initial state of the board."""
-    for row in board.player_positions:
-        for cell in row:
-            assert not cell.occupied
-            assert cell.can_be_occupied
-            assert cell.player is None
+def test_initial_pawn_positions(board):
+    assert board.pawn1.position == Position(0, 4)
+    assert board.pawn2.position == Position(8, 4)
 
-    for row in board.horizontal_walls:
-        for cell in row:
-            assert not cell.occupied
-            assert cell.can_be_occupied
+def test_valid_pawn_move(board):
+    new_position = Position(1, 4)
+    board.move_pawn(board.pawn1, new_position)
+    assert board.pawn1.position == new_position
 
-    for row in board.vertical_walls:
-        for cell in row:
-            assert not cell.occupied
-            assert cell.can_be_occupied
+def test_invalid_pawn_move_out_of_bounds(board):
+    new_position = Position(-1, 4)
+    with pytest.raises(IndexError):
+        board.move_pawn(board.pawn1, new_position)
 
-def test_player_position(board):
-    """Test updating player positions."""
-    board.update_player_position(0, 0, True, player=1)
-    assert board.player_positions[0][0].occupied
-    assert not board.player_positions[0][0].can_be_occupied
-    assert board.player_positions[0][0].player == 1
-
-    board.update_player_position(0, 0, False)
-    assert not board.player_positions[0][0].occupied
-    assert board.player_positions[0][0].can_be_occupied
-    assert board.player_positions[0][0].player is None
-
-def test_horizontal_wall(board):
-    """Test placing horizontal walls and their effects."""
-    board.update_horizontal_wall(1, 1, True)
-    assert board.horizontal_walls[1][1].occupied
-    assert not board.horizontal_walls[1][1].can_be_occupied
-
-    # Adjacent horizontal walls should not be occupiable
-    assert not board.horizontal_walls[1][0].can_be_occupied
-    assert not board.horizontal_walls[1][2].can_be_occupied
-
-    # Overlapping vertical walls should not be occupiable
-    assert not board.vertical_walls[1][1].can_be_occupied
-    assert not board.vertical_walls[1][2].can_be_occupied
-
-def test_vertical_wall(board):
-    """Test placing vertical walls and their effects."""
-    board.update_vertical_wall(1, 1, True)
-    assert board.vertical_walls[1][1].occupied
-    assert not board.vertical_walls[1][1].can_be_occupied
-
-    # Adjacent vertical walls should not be occupiable
-    assert not board.vertical_walls[0][1].can_be_occupied
-    assert not board.vertical_walls[2][1].can_be_occupied
-
-    # Overlapping horizontal walls should not be occupiable
-    assert not board.horizontal_walls[1][1].can_be_occupied
-    assert not board.horizontal_walls[2][1].can_be_occupied
-
-def test_validate_position(board):
+def test_invalid_pawn_move_occupied(board):
+    new_position = Position(8, 4)
     with pytest.raises(ValueError):
-        board._validate_position(-1, 0, 9, 9)
+        board.move_pawn(board.pawn1, new_position)
 
+def test_valid_wall_placement_horizontal(board):
+    position = Position(4, 4)
+    board.place_wall(WallOrientation.HORIZONTAL, position)
+    assert board.horizontal_wall_slots[position].occupied
+
+def test_valid_wall_placement_vertical(board):
+    position = Position(5, 5)
+    board.place_wall(WallOrientation.VERTICAL, position)
+    assert board.vertical_wall_slots[position].occupied
+
+def test_invalid_wall_placement_overlap(board):
+    position = Position(4, 4)
+    board.place_wall(WallOrientation.HORIZONTAL, position)
     with pytest.raises(ValueError):
-        board._validate_position(9, 9, 8, 9)
+        board.place_wall(WallOrientation.HORIZONTAL, position)
 
-# def test_invalid_positions(board):
-#     """Test handling of invalid positions."""
-#     with pytest.raises(ValueError):
-#         board.update_player_position(-1, 0, True, player=1)
+def test_invalid_wall_placement_block_path(board):
+    # Assuming is_path_blocked is implemented
+    position = Position(4, 4)
+    board.place_wall(WallOrientation.HORIZONTAL, position)
+    with pytest.raises(ValueError):
+        board.place_wall(WallOrientation.VERTICAL, Position(4, 5))
 
-#     with pytest.raises(ValueError):
-#         board.update_horizontal_wall(8, 9, True)
+def test_pawn_jump_over_adjacent_pawn(board):
+    # Move pawn2 to the position where it will be adjacent to pawn1
+    board.move_pawn(board.pawn2, Position(7, 4))
+    board.move_pawn(board.pawn2, Position(6, 4))
+    board.move_pawn(board.pawn2, Position(5, 4))
+    board.move_pawn(board.pawn2, Position(4, 4))
+    board.move_pawn(board.pawn2, Position(3, 4))
+    board.move_pawn(board.pawn2, Position(2, 4))
 
-#     with pytest.raises(ValueError):
-#         board.update_vertical_wall(9, 8, True)
+    # Move pawn1 to the position where it will be adjacent to pawn2
+    board.move_pawn(board.pawn1, Position(1, 4))
 
-if __name__ == "__main__":
-    pytest.main()
+    # Test jump over pawn2
+    board.move_pawn(board.pawn1, Position(3, 4))
+    assert board.pawn1.position == Position(3, 4)
+
+    # Test blocked jump
+    board.place_wall(WallOrientation.HORIZONTAL, Position(2, 4))
+    with pytest.raises(ValueError):
+        board.move_pawn(board.pawn1, Position(4, 4))
+
+    # Test left move when jump is blocked
+    board.move_pawn(board.pawn1, Position(2, 3))
+    assert board.pawn1.position == Position(2, 3)
+
+    # Test right move when jump is blocked
+    board.move_pawn(board.pawn1, Position(2, 4))
+    board.move_pawn(board.pawn1, Position(2, 5))
+    assert board.pawn1.position == Position(2, 5)
+
+    # Test that diagonal move is prohibited in all other cases
+    with pytest.raises(ValueError):
+        board.move_pawn(board.pawn1, Position(3, 5))
+    with pytest.raises(ValueError):
+        board.move_pawn(board.pawn1, Position(1, 5))
+
+def test_pawn_jump_blocked_by_wall(board):
+    board.move_pawn(board.pawn1, Position(1, 4))
+    board.move_pawn(board.pawn2, Position(2, 4))
+    board.place_wall(WallOrientation.HORIZONTAL, Position(2, 4))
+    with pytest.raises(ValueError):
+        board.move_pawn(board.pawn1, Position(3, 4))
+
+def test_pawn_move_left_right_when_jump_blocked(board):
+    board.move_pawn(board.pawn1, Position(1, 4))
+    board.move_pawn(board.pawn2, Position(2, 4))
+    board.place_wall(WallOrientation.HORIZONTAL, Position(2, 4))
+    board.move_pawn(board.pawn1, Position(2, 3))
+    assert board.pawn1.position == Position(2, 3)
+
+def test_wall_placement_on_board_edges(board):
+    position = Position(0, 0)
+    board.place_wall(WallOrientation.HORIZONTAL, position)
+    assert board.horizontal_wall_slots[position].occupied
+
+    position = Position(0, 0)
+    board.place_wall(WallOrientation.VERTICAL, position)
+    assert board.vertical_wall_slots[position].occupied
+
+def test_wall_placement_out_of_bounds(board):
+    position = Position(-1, 0)
+    with pytest.raises(ValueError):
+        board.place_wall(WallOrientation.HORIZONTAL, position)
+
+    position = Position(0, -1)
+    with pytest.raises(ValueError):
+        board.place_wall(WallOrientation.VERTICAL, position)
+
