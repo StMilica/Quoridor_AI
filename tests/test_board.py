@@ -59,7 +59,7 @@ def test_pawn_jump_over_adjacent_pawn(board):
     # Move pawn1 to the position where it will be adjacent to pawn2
     board.move_pawn(board.pawn1, Position(1, 4))
 
-    # Test jump over pawn2
+    # Test pawn1 jump over pawn2
     board.move_pawn(board.pawn1, Position(3, 4))
     assert board.pawn1.position == Position(3, 4)
 

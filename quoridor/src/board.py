@@ -1,5 +1,5 @@
 from enum import Enum
-from .utils.types import Position, Matrix
+from .utils.types import Direction, Position, Matrix, WallSlotPosition
 from abc import ABC, abstractmethod
 from collections import deque
 
@@ -13,6 +13,9 @@ class Pawn:
     def __init__(self, id, position):
         self.id = id
         self.position = position
+    
+    def desired_direction(self):
+        return Direction.UP if self.id == 1 else Direction.DOWN
 
 class Wall:
     def __init__(self, orientation, position):
@@ -22,6 +25,9 @@ class Wall:
 class Field:
     def __init__(self, pawn=None):
         self.pawn = pawn
+    
+    def is_occupied(self):
+        return self.pawn is not None
 
 class WallSlot:
     def __init__(self, occupied=False, can_be_occupied=True):
@@ -58,87 +64,133 @@ class Board(BoardBase):
             raise ValueError("Invalid move")
         self.fields.move_item(pawn.position, new_position)
         pawn.position = new_position
-
-    def is_valid_pawn_move(self, current_position, new_position):
-        """Check if a move is valid according to the game rules."""
-        row_diff = abs(current_position.row - new_position.row)
-        col_diff = abs(current_position.col - new_position.col)
-
-        if row_diff + col_diff == 1:
-            # Normal move to adjacent cell
-            if self.fields[new_position].pawn is not None:
-                return False  # Cannot move to a cell occupied by another pawn
-
-            # Check for walls blocking the move
-            if row_diff == 1:
-                if current_position.row < new_position.row:
-                    return not self.horizontal_wall_slots[current_position].occupied
+        
+    def can_pass_between_adjacent_positions(self, start_position: Position, end_position: Position) -> bool:
+        """Check if there are walls between two adjacent positions - Must be adjacent positions, otherwise will raise an error."""
+        direction = Direction.from_positions(start_position, end_position)
+        # UP
+        if direction == Direction.UP:
+            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.HORIZONTAL, [WallSlotPosition.UP_LEFT, WallSlotPosition.UP_RIGHT])
+            return any([wall_slot.occupied for wall_slot in wall_slots])
+        # DOWN
+        if direction == Direction.DOWN:
+            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.HORIZONTAL, [WallSlotPosition.DOWN_LEFT, WallSlotPosition.DOWN_RIGHT])
+            return any([wall_slot.occupied for wall_slot in wall_slots])
+        # LEFT
+        if direction == Direction.LEFT:
+            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.VERTICAL, [WallSlotPosition.UP_LEFT, WallSlotPosition.DOWN_LEFT])
+            return any([wall_slot.occupied for wall_slot in wall_slots])
+        # RIGHT
+        if direction == Direction.RIGHT:
+            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.VERTICAL, [WallSlotPosition.UP_RIGHT, WallSlotPosition.DOWN_RIGHT])
+            return any([wall_slot.occupied for wall_slot in wall_slots])
+        
+    def get_all_valid_pawn_moves(self, pawn):
+        """Get all valid moves for a pawn."""
+        valid_moves = []        
+        # UP
+        up_position = pawn.position + Direction.UP
+        if self.fields.is_in_bounds(up_position) and self.can_pass_between_adjacent_positions(pawn.position, up_position):
+            if not self.fields[up_position].is_occupied():
+                valid_moves.append(up_position)
+            else: 
+                # Jump over the pawn
+                # IF there is a wall behind the pawn, the jump is not possible
+                jump_over_position = up_position + Direction.UP
+                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(up_position, jump_over_position):
+                    valid_moves.append(jump_over_position)
+                elif self.fields.is_in_bounds(jump_over_position):
+                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
+                    # LEFT
+                    left_position = up_position + Direction.LEFT
+                    if self.fields.is_in_bounds(left_position) and self.can_pass_between_adjacent_positions(up_position, left_position):
+                        valid_moves.append(left_position)
+                    # RIGHT
+                    right_position = up_position + Direction.RIGHT
+                    if self.fields.is_in_bounds(right_position) and self.can_pass_between_adjacent_positions(up_position, right_position):
+                        valid_moves.append(right_position)
                 else:
-                    return not self.horizontal_wall_slots[new_position].occupied
-            elif col_diff == 1:
-                if current_position.col < new_position.col:
-                    return not self.vertical_wall_slots[current_position].occupied
+                    if pawn.desired_direction() == Direction.UP:
+                        valid_moves.append(jump_over_position)
+                        print("Victory, pawn jumped over the other pawn")
+                        # TODO: Handle it any way you want within the game logic!
+        
+        # DOWN
+        down_position = pawn.position + Direction.DOWN
+        if self.fields.is_in_bounds(down_position) and self.can_pass_between_adjacent_positions(pawn.position, down_position):
+            if not self.fields[down_position].is_occupied():
+                valid_moves.append(down_position)
+            else: 
+                # Jump over the pawn
+                # IF there is a wall behind the pawn, the jump is not possible
+                jump_over_position = down_position + Direction.DOWN
+                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(down_position, jump_over_position):
+                    valid_moves.append(jump_over_position)
+                elif self.fields.is_in_bounds(jump_over_position):
+                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
+                    # LEFT
+                    left_position = down_position + Direction.LEFT
+                    if self.fields.is_in_bounds(left_position) and self.can_pass_between_adjacent_positions(down_position, left_position):
+                        valid_moves.append(left_position)
+                    # RIGHT
+                    right_position = down_position + Direction.RIGHT
+                    if self.fields.is_in_bounds(right_position) and self.can_pass_between_adjacent_positions(down_position, right_position):
+                        valid_moves.append(right_position)
                 else:
-                    return not self.vertical_wall_slots[new_position].occupied
-
-        elif row_diff + col_diff == 2:
-            # Jump over an adjacent pawn
-            mid_row = (current_position.row + new_position.row) // 2
-            mid_col = (current_position.col + new_position.col) // 2
-            mid_position = Position(mid_row, mid_col)
-
-            if self.fields[mid_position].pawn is None:
-                return False  # No pawn to jump over
-
-            # Check for walls blocking the jump
-            if row_diff == 2:
-                if current_position.row < new_position.row:
-                    if self.horizontal_wall_slots[mid_position].occupied:
-                        # Check for left or right move
-                        left_position = Position(mid_row, mid_col - 1)
-                        right_position = Position(mid_row, mid_col + 1)
-                        if self.fields.is_in_bounds(left_position) and not self.vertical_wall_slots[left_position].occupied:
-                            return new_position == left_position
-                        if self.fields.is_in_bounds(right_position) and not self.vertical_wall_slots[mid_position].occupied:
-                            return new_position == right_position
-                        return False
-                    return not self.horizontal_wall_slots[mid_position].occupied
+                    if pawn.desired_direction() == Direction.DOWN:
+                        valid_moves.append(jump_over_position)
+                        print("Victory, pawn jumped over the other pawn")
+                        # TODO: Handle it any way you want within the game logic!
+                        
+        # LEFT
+        left_position = pawn.position + Direction.LEFT
+        if self.fields.is_in_bounds(left_position) and self.can_pass_between_adjacent_positions(pawn.position, left_position):
+            if not self.fields[left_position].is_occupied():
+                valid_moves.append(left_position)
+            else: 
+                # Jump over the pawn
+                # IF there is a wall behind the pawn, the jump is not possible
+                jump_over_position = left_position + Direction.LEFT
+                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(left_position, jump_over_position):
+                    valid_moves.append(jump_over_position)
                 else:
-                    if self.horizontal_wall_slots[new_position].occupied:
-                        # Check for left or right move
-                        left_position = Position(mid_row, mid_col - 1)
-                        right_position = Position(mid_row, mid_col + 1)
-                        if self.fields.is_in_bounds(left_position) and not self.vertical_wall_slots[left_position].occupied:
-                            return new_position == left_position
-                        if self.fields.is_in_bounds(right_position) and not self.vertical_wall_slots[mid_position].occupied:
-                            return new_position == right_position
-                        return False
-                    return not self.horizontal_wall_slots[new_position].occupied
-            elif col_diff == 2:
-                if current_position.col < new_position.col:
-                    if self.vertical_wall_slots[mid_position].occupied:
-                        # Check for up or down move
-                        up_position = Position(mid_row - 1, mid_col)
-                        down_position = Position(mid_row + 1, mid_col)
-                        if self.fields.is_in_bounds(up_position) and not self.horizontal_wall_slots[up_position].occupied:
-                            return new_position == up_position
-                        if self.fields.is_in_bounds(down_position) and not self.horizontal_wall_slots[mid_position].occupied:
-                            return new_position == down_position
-                        return False
-                    return not self.vertical_wall_slots[mid_position].occupied
+                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
+                    # UP
+                    up_position = left_position + Direction.UP
+                    if self.fields.is_in_bounds(up_position) and self.can_pass_between_adjacent_positions(left_position, up_position):
+                        valid_moves.append(up_position)
+                    # DOWN
+                    down_position = left_position + Direction.DOWN
+                    if self.fields.is_in_bounds(down_position) and self.can_pass_between_adjacent_positions(left_position, down_position):
+                        valid_moves.append(down_position)
+                        
+        # RIGHT
+        right_position = pawn.position + Direction.RIGHT
+        if self.fields.is_in_bounds(right_position) and self.can_pass_between_adjacent_positions(pawn.position, right_position):
+            if not self.fields[right_position].is_occupied():
+                valid_moves.append(right_position)
+            else: 
+                # Jump over the pawn
+                # IF there is a wall behind the pawn, the jump is not possible
+                jump_over_position = right_position + Direction.RIGHT
+                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(right_position, jump_over_position):
+                    valid_moves.append(jump_over_position)
                 else:
-                    if self.vertical_wall_slots[new_position].occupied:
-                        # Check for up or down move
-                        up_position = Position(mid_row - 1, mid_col)
-                        down_position = Position(mid_row + 1, mid_col)
-                        if self.fields.is_in_bounds(up_position) and not self.horizontal_wall_slots[up_position].occupied:
-                            return new_position == up_position
-                        if self.fields.is_in_bounds(down_position) and not self.horizontal_wall_slots[mid_position].occupied:
-                            return new_position == down_position
-                        return False
-                    return not self.vertical_wall_slots[new_position].occupied
+                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
+                    # UP
+                    up_position = right_position + Direction.UP
+                    if self.fields.is_in_bounds(up_position) and self.can_pass_between_adjacent_positions(right_position, up_position):
+                        valid_moves.append(up_position)
+                    # DOWN
+                    down_position = right_position + Direction.DOWN
+                    if self.fields.is_in_bounds(down_position) and self.can_pass_between_adjacent_positions(right_position, down_position):
+                        valid_moves.append(down_position)
+            
 
-        return False
+        return valid_moves
+    
+
+        
 
     def place_wall(self, orientation, position):
         """Place a wall at a given position."""
@@ -215,6 +267,41 @@ class Board(BoardBase):
                 queue.append(new_position)
 
         return True  # Path is blocked
+    
+    def get_surrounding_wall_slots(self, position, orientation, wall_slot_positions: list[WallSlotPosition]):
+        wall_slots = []
+        for wall_slot_position in wall_slot_positions:
+            wall_slots.append(self.get_surrounding_wall_slot(position, orientation, wall_slot_position))
+        return wall_slots
+    
+    def get_surrounding_wall_slot(self, position, orientation, wall_slot_position: WallSlotPosition):
+        if wall_slot_position == WallSlotPosition.UP_LEFT:
+            wsp = Position(row=position.row - 1, col=position.col - 1)
+            if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
+                return self.horizontal_wall_slots[wsp]
+            return self.vertical_wall_slots[wsp]
+        
+        if wall_slot_position == WallSlotPosition.UP_RIGHT:
+            wsp = Position(row=position.row - 1, col=position.col)
+            if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
+                return self.horizontal_wall_slots[wsp]
+            return self.vertical_wall_slots[wsp]
+        
+        if wall_slot_position == WallSlotPosition.DOWN_LEFT:
+            wsp = Position(row=position.row, col=position.col - 1)
+            if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
+                return self.horizontal_wall_slots[wsp]
+            return self.vertical_wall_slots[wsp]
+        
+        if wall_slot_position == WallSlotPosition.DOWN_RIGHT:
+            wsp = Position(row=position.row, col=position.col)
+            if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
+                return self.horizontal_wall_slots[wsp]
+            return self.vertical_wall_slots[wsp]
+        
+        
+
+            
 
 # Example usage:
 

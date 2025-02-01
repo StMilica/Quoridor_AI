@@ -1,5 +1,7 @@
-
+from enum import Enum
+    
 class Position:
+    
     def __init__(self, row, col):
         self.row = row
         self.col = col
@@ -14,6 +16,45 @@ class Position:
 
     def __repr__(self):
         return f"Position(row={self.row}, col={self.col})"
+    
+    def __add__(self, other):
+        if isinstance(other, Position):
+            return Position(self.row + other.row, self.col + other.col)
+        return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(other, Position):
+            return Position(self.row - other.row, self.col - other.col)
+        return NotImplemented
+
+class WallSlotPosition(Enum):
+    UP_LEFT = (-1, -1)
+    UP_RIGHT = (-1, 1)
+    DOWN_LEFT = (1, -1)
+    DOWN_RIGHT = (1, 1)
+    
+class Direction(Enum):
+    UP = Position(-1, 0)
+    DOWN = Position(1, 0)
+    LEFT = Position(0, -1)
+    RIGHT = Position(0, 1)
+
+    @staticmethod
+    def from_positions(start: Position, end: Position):
+        delta = end - start
+        if abs(delta.row) + abs(delta.col) != 1:
+            raise ValueError("Positions are not directly adjacent")
+        
+        for direction in Direction:
+            if direction.value == (delta.row, delta.col):
+                return direction
+        raise ValueError("Invalid direction")
+    
+    @staticmethod
+    def all_directions() -> list['Direction']:
+        return list(Direction)
+    
+    
 
 class Matrix:
     def __init__(self, rows, cols, default_value=None):
