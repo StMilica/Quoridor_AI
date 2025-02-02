@@ -1,13 +1,9 @@
 from enum import Enum
-from .utils.types import Direction, Position, Matrix, WallSlotPosition
+from .utils.types import Direction, Position, Matrix, WallOrientation, WallSlotPosition
 from abc import ABC, abstractmethod
 from collections import deque
 
 # Types
-
-class WallOrientation(Enum):
-    HORIZONTAL = 1
-    VERTICAL = 2
 
 class Pawn:
     def __init__(self, id, position):
@@ -68,22 +64,11 @@ class Board(BoardBase):
     def can_pass_between_adjacent_positions(self, start_position: Position, end_position: Position) -> bool:
         """Check if there are walls between two adjacent positions - Must be adjacent positions, otherwise will raise an error."""
         direction = Direction.from_positions(start_position, end_position)
-        # UP
-        if direction == Direction.UP:
-            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.HORIZONTAL, [WallSlotPosition.UP_LEFT, WallSlotPosition.UP_RIGHT])
-            return any([wall_slot.occupied for wall_slot in wall_slots])
-        # DOWN
-        if direction == Direction.DOWN:
-            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.HORIZONTAL, [WallSlotPosition.DOWN_LEFT, WallSlotPosition.DOWN_RIGHT])
-            return any([wall_slot.occupied for wall_slot in wall_slots])
-        # LEFT
-        if direction == Direction.LEFT:
-            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.VERTICAL, [WallSlotPosition.UP_LEFT, WallSlotPosition.DOWN_LEFT])
-            return any([wall_slot.occupied for wall_slot in wall_slots])
-        # RIGHT
-        if direction == Direction.RIGHT:
-            wall_slots = self.get_surrounding_wall_slots(start_position, WallOrientation.VERTICAL, [WallSlotPosition.UP_RIGHT, WallSlotPosition.DOWN_RIGHT])
-            return any([wall_slot.occupied for wall_slot in wall_slots])
+        wall_orientation = WallOrientation.from_direction(direction)
+        wall_slot_positions = direction.wall_slot_positions()
+        wall_slots = self.get_surrounding_wall_slots(start_position, wall_orientation, wall_slot_positions)
+        return not any([wall_slot.occupied for wall_slot in wall_slots])
+
         
     def get_all_valid_pawn_moves(self, pawn):
         """Get all valid moves for a pawn."""

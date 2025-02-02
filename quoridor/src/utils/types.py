@@ -27,11 +27,15 @@ class Position:
             return Position(self.row - other.row, self.col - other.col)
         return NotImplemented
 
+class WallOrientation(Enum):
+    HORIZONTAL = 1
+    VERTICAL = 2
+    
 class WallSlotPosition(Enum):
-    UP_LEFT = (-1, -1)
-    UP_RIGHT = (-1, 1)
-    DOWN_LEFT = (1, -1)
-    DOWN_RIGHT = (1, 1)
+    UP_LEFT = Position(-1, -1)
+    UP_RIGHT = Position(-1, 1)
+    DOWN_LEFT = Position(1, -1)
+    DOWN_RIGHT = Position(1, 1)
     
 class Direction(Enum):
     UP = Position(-1, 0)
@@ -49,6 +53,30 @@ class Direction(Enum):
             if direction.value == (delta.row, delta.col):
                 return direction
         raise ValueError("Invalid direction")
+    
+    def rotate_left(self):
+        return {
+            Direction.UP: Direction.LEFT,
+            Direction.LEFT: Direction.DOWN,
+            Direction.DOWN: Direction.RIGHT,
+            Direction.RIGHT: Direction.UP
+        }[self]
+    
+    def rotate_right(self):
+        return {
+            Direction.UP: Direction.RIGHT,
+            Direction.RIGHT: Direction.DOWN,
+            Direction.DOWN: Direction.LEFT,
+            Direction.LEFT: Direction.UP
+        }[self]
+        
+    def perpendicular_directions(self):
+        return {
+            Direction.UP: (Direction.LEFT, Direction.RIGHT),
+            Direction.RIGHT: (Direction.UP, Direction.DOWN),
+            Direction.DOWN: (Direction.LEFT, Direction.RIGHT),
+            Direction.LEFT: (Direction.UP, Direction.DOWN)
+        }[self]
     
     @staticmethod
     def all_directions() -> list['Direction']:
