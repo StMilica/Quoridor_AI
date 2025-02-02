@@ -30,6 +30,12 @@ class Position:
 class WallOrientation(Enum):
     HORIZONTAL = 1
     VERTICAL = 2
+
+    @staticmethod
+    def from_direction(direction):
+        if direction in [Direction.UP, Direction.DOWN]:
+            return WallOrientation.HORIZONTAL
+        return WallOrientation.VERTICAL
     
 class WallSlotPosition(Enum):
     UP_LEFT = Position(-1, -1)
@@ -76,6 +82,14 @@ class Direction(Enum):
             Direction.RIGHT: (Direction.UP, Direction.DOWN),
             Direction.DOWN: (Direction.LEFT, Direction.RIGHT),
             Direction.LEFT: (Direction.UP, Direction.DOWN)
+        }[self]
+    
+    def wall_slot_positions(self):
+        return {
+            Direction.UP: (WallSlotPosition.UP_LEFT, WallSlotPosition.UP_RIGHT),
+            Direction.RIGHT: (WallSlotPosition.UP_RIGHT, WallSlotPosition.DOWN_RIGHT),
+            Direction.DOWN: (WallSlotPosition.DOWN_LEFT, WallSlotPosition.DOWN_RIGHT),
+            Direction.LEFT: (WallSlotPosition.UP_LEFT, WallSlotPosition.DOWN_LEFT)
         }[self]
     
     @staticmethod

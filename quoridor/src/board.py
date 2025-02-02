@@ -72,108 +72,42 @@ class Board(BoardBase):
         
     def get_all_valid_pawn_moves(self, pawn):
         """Get all valid moves for a pawn."""
-        valid_moves = []        
-        # UP
-        up_position = pawn.position + Direction.UP
-        if self.fields.is_in_bounds(up_position) and self.can_pass_between_adjacent_positions(pawn.position, up_position):
-            if not self.fields[up_position].is_occupied():
-                valid_moves.append(up_position)
-            else: 
-                # Jump over the pawn
-                # IF there is a wall behind the pawn, the jump is not possible
-                jump_over_position = up_position + Direction.UP
-                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(up_position, jump_over_position):
-                    valid_moves.append(jump_over_position)
-                elif self.fields.is_in_bounds(jump_over_position):
-                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
-                    # LEFT
-                    left_position = up_position + Direction.LEFT
-                    if self.fields.is_in_bounds(left_position) and self.can_pass_between_adjacent_positions(up_position, left_position):
-                        valid_moves.append(left_position)
-                    # RIGHT
-                    right_position = up_position + Direction.RIGHT
-                    if self.fields.is_in_bounds(right_position) and self.can_pass_between_adjacent_positions(up_position, right_position):
-                        valid_moves.append(right_position)
-                else:
-                    if pawn.desired_direction() == Direction.UP:
-                        valid_moves.append(jump_over_position)
-                        print("Victory, pawn jumped over the other pawn")
-                        # TODO: Handle it any way you want within the game logic!
+        valid_moves = []
         
-        # DOWN
-        down_position = pawn.position + Direction.DOWN
-        if self.fields.is_in_bounds(down_position) and self.can_pass_between_adjacent_positions(pawn.position, down_position):
-            if not self.fields[down_position].is_occupied():
-                valid_moves.append(down_position)
-            else: 
-                # Jump over the pawn
-                # IF there is a wall behind the pawn, the jump is not possible
-                jump_over_position = down_position + Direction.DOWN
-                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(down_position, jump_over_position):
-                    valid_moves.append(jump_over_position)
-                elif self.fields.is_in_bounds(jump_over_position):
-                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
-                    # LEFT
-                    left_position = down_position + Direction.LEFT
-                    if self.fields.is_in_bounds(left_position) and self.can_pass_between_adjacent_positions(down_position, left_position):
-                        valid_moves.append(left_position)
-                    # RIGHT
-                    right_position = down_position + Direction.RIGHT
-                    if self.fields.is_in_bounds(right_position) and self.can_pass_between_adjacent_positions(down_position, right_position):
-                        valid_moves.append(right_position)
-                else:
-                    if pawn.desired_direction() == Direction.DOWN:
-                        valid_moves.append(jump_over_position)
-                        print("Victory, pawn jumped over the other pawn")
-                        # TODO: Handle it any way you want within the game logic!
-                        
-        # LEFT
-        left_position = pawn.position + Direction.LEFT
-        if self.fields.is_in_bounds(left_position) and self.can_pass_between_adjacent_positions(pawn.position, left_position):
-            if not self.fields[left_position].is_occupied():
-                valid_moves.append(left_position)
-            else: 
-                # Jump over the pawn
-                # IF there is a wall behind the pawn, the jump is not possible
-                jump_over_position = left_position + Direction.LEFT
-                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(left_position, jump_over_position):
-                    valid_moves.append(jump_over_position)
-                else:
-                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
-                    # UP
-                    up_position = left_position + Direction.UP
-                    if self.fields.is_in_bounds(up_position) and self.can_pass_between_adjacent_positions(left_position, up_position):
-                        valid_moves.append(up_position)
-                    # DOWN
-                    down_position = left_position + Direction.DOWN
-                    if self.fields.is_in_bounds(down_position) and self.can_pass_between_adjacent_positions(left_position, down_position):
-                        valid_moves.append(down_position)
-                        
-        # RIGHT
-        right_position = pawn.position + Direction.RIGHT
-        if self.fields.is_in_bounds(right_position) and self.can_pass_between_adjacent_positions(pawn.position, right_position):
-            if not self.fields[right_position].is_occupied():
-                valid_moves.append(right_position)
-            else: 
-                # Jump over the pawn
-                # IF there is a wall behind the pawn, the jump is not possible
-                jump_over_position = right_position + Direction.RIGHT
-                if self.fields.is_in_bounds(jump_over_position) and self.can_pass_between_adjacent_positions(right_position, jump_over_position):
-                    valid_moves.append(jump_over_position)
-                else:
-                    # If there is a wall behind the pawn, check if the pawn can move to the left or right
-                    # UP
-                    up_position = right_position + Direction.UP
-                    if self.fields.is_in_bounds(up_position) and self.can_pass_between_adjacent_positions(right_position, up_position):
-                        valid_moves.append(up_position)
-                    # DOWN
-                    down_position = right_position + Direction.DOWN
-                    if self.fields.is_in_bounds(down_position) and self.can_pass_between_adjacent_positions(right_position, down_position):
-                        valid_moves.append(down_position)
-            
+        for direction in Direction.all_directions():
+            new_position = pawn.position + direction
+            if self.fileds.is_in_bounds(new_position):
+                if self.can_pass_between_adjacent_positions(pawn.position, new_position):
+                    if not self.fields[new_position].is_occupied():
+                        valid_moves.append(new_position)
+                    else:
+                        jump_over_position = new_position + direction
+                        if self.fields.is_in_bounds(jump_over_position):
+                            if self.can_pass_between_adjacent_positions(new_position, jump_over_position):
+                                # Jump over it there isn't a wall behind and the position is in bounds
+                                valid_moves.append(jump_over_position)
+                            else:
+                                # Check if the pawn can move to perpendicular directions
+                                for perpendicular_direction in direction.perpendicular_directions():
+                                    perpendicular_position = new_position + perpendicular_direction
+                                    if self.fields.is_in_bounds(perpendicular_position) and self.can_pass_between_adjacent_positions(new_position, perpendicular_position):
+                                        valid_moves.append(perpendicular_position)
 
-        return valid_moves
+                        elif pawn.desired_direction() == direction and not self.fields.is_in_bounds(jump_over_position):
+                            # Jumping over the pawn wins the game
+                            valid_moves.append(jump_over_position)
+                            print("Victory, pawn jumps over the oponent pawn over the edge of the board")
+                            # TODO: Handle it any way you want within the game logic!
+        
+        # If valid moves are empty, the pawn is blocked, this is an edge case that needs to be solved by the game logic
+        # In some cases raise an error, in other cases allow for a diagonal or any other kind of jump that needs to be checked properly and handled as a custom edge case.
+        # But he should either win the game or be able to move forward, there are no other options.
+        if not valid_moves:
+            # TODO: Handle the jump over for a specific edge case that happens here, or declare a win game!
+            print("Pawn is blocked, handle it as a custom edge case or declare victory")
+            raise ValueError("Pawn is blocked")
     
+        return valid_moves
 
         
 
