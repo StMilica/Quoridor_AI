@@ -56,9 +56,15 @@ class Board(BoardBase):
 
     def move_pawn(self, pawn, new_position):
         """Move a pawn to a new position."""
-        if not self.is_valid_pawn_move(pawn.position, new_position):
+        valid_moves = self.get_all_valid_pawn_moves(pawn)
+        if new_position not in valid_moves:
             raise ValueError("Invalid move")
-        self.fields.move_item(pawn.position, new_position)
+        
+        # Clear the old position
+        self.fields[pawn.position].pawn = None
+        
+        # Move the pawn to the new position
+        self.fields[new_position].pawn = pawn
         pawn.position = new_position
         
     def can_pass_between_adjacent_positions(self, start_position: Position, end_position: Position) -> bool:
@@ -73,15 +79,15 @@ class Board(BoardBase):
     def get_all_valid_pawn_moves(self, pawn):
         """Get all valid moves for a pawn."""
         valid_moves = []
-        
+
         for direction in Direction.all_directions():
-            new_position = pawn.position + direction
-            if self.fileds.is_in_bounds(new_position):
+            new_position = pawn.position + direction.value
+            if self.fields.is_in_bounds(new_position):
                 if self.can_pass_between_adjacent_positions(pawn.position, new_position):
                     if not self.fields[new_position].is_occupied():
                         valid_moves.append(new_position)
                     else:
-                        jump_over_position = new_position + direction
+                        jump_over_position = new_position + direction.value
                         if self.fields.is_in_bounds(jump_over_position):
                             if self.can_pass_between_adjacent_positions(new_position, jump_over_position):
                                 # Jump over it there isn't a wall behind and the position is in bounds

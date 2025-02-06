@@ -56,7 +56,7 @@ class Direction(Enum):
             raise ValueError("Positions are not directly adjacent")
         
         for direction in Direction:
-            if direction.value == (delta.row, delta.col):
+            if direction.value == Position(delta.row, delta.col):
                 return direction
         raise ValueError("Invalid direction")
     
