@@ -99,10 +99,10 @@ class Direction(Enum):
     
 
 class Matrix:
-    def __init__(self, rows, cols, default_value=None):
+    def __init__(self, rows, cols, default_factory=None):
         self.rows = rows
         self.cols = cols
-        self.data = [[default_value for _ in range(cols)] for _ in range(rows)]
+        self.data = [[default_factory() for _ in range(cols)] for _ in range(rows)]
 
     def is_in_bounds(self, position):
         row, col = position

@@ -1,5 +1,5 @@
 from enum import Enum
-from .utils.types import Direction, Position, Matrix, WallOrientation, WallSlotPosition
+from quoridor.src.utils.types import Direction, Position, Matrix, WallOrientation, WallSlotPosition
 from abc import ABC, abstractmethod
 from collections import deque
 
@@ -50,9 +50,14 @@ class Board(BoardBase):
         self.pawn1 = Pawn(1, Position(0, 4))
         self.pawn2 = Pawn(2, Position(8, 4))
 
-        self.fields = Matrix(self.board_width, self.board_width, Field())
-        self.horizontal_wall_slots = Matrix(self.board_width - 1, self.board_width, WallSlot())
-        self.vertical_wall_slots = Matrix(self.board_width, self.board_width - 1, WallSlot())
+        self.fields = Matrix(self.board_width, self.board_width, lambda: Field())
+        self.horizontal_wall_slots = Matrix(self.board_width - 1, self.board_width, lambda: WallSlot())
+        self.vertical_wall_slots = Matrix(self.board_width, self.board_width - 1, lambda: WallSlot())
+
+        # Initialize the fields with the initial pawn positions
+        self.fields[self.pawn1.position].pawn = self.pawn1
+        self.fields[self.pawn2.position].pawn = self.pawn2
+
 
     def move_pawn(self, pawn, new_position):
         """Move a pawn to a new position."""
@@ -73,7 +78,7 @@ class Board(BoardBase):
         wall_orientation = WallOrientation.from_direction(direction)
         wall_slot_positions = direction.wall_slot_positions()
         wall_slots = self.get_surrounding_wall_slots(start_position, wall_orientation, wall_slot_positions)
-        return not any([wall_slot.occupied for wall_slot in wall_slots])
+        return not any([wall_slot.occupied for wall_slot in wall_slots if wall_slot is not None])
 
         
     def get_all_valid_pawn_moves(self, pawn):
@@ -204,26 +209,67 @@ class Board(BoardBase):
             wsp = Position(row=position.row - 1, col=position.col - 1)
             if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
                 return self.horizontal_wall_slots[wsp]
-            return self.vertical_wall_slots[wsp]
+            elif orientation == WallOrientation.VERTICAL and self.vertical_wall_slots.is_in_bounds(wsp):
+                return self.vertical_wall_slots[wsp]
+            else:
+                return None
         
         if wall_slot_position == WallSlotPosition.UP_RIGHT:
             wsp = Position(row=position.row - 1, col=position.col)
             if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
                 return self.horizontal_wall_slots[wsp]
-            return self.vertical_wall_slots[wsp]
+            elif orientation == WallOrientation.VERTICAL and self.vertical_wall_slots.is_in_bounds(wsp):
+                return self.vertical_wall_slots[wsp]
+            else:
+                return None
         
         if wall_slot_position == WallSlotPosition.DOWN_LEFT:
             wsp = Position(row=position.row, col=position.col - 1)
             if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
                 return self.horizontal_wall_slots[wsp]
-            return self.vertical_wall_slots[wsp]
+            elif orientation == WallOrientation.VERTICAL and self.vertical_wall_slots.is_in_bounds(wsp):
+                return self.vertical_wall_slots[wsp]
+            else:
+                return None
         
         if wall_slot_position == WallSlotPosition.DOWN_RIGHT:
             wsp = Position(row=position.row, col=position.col)
             if orientation == WallOrientation.HORIZONTAL and self.horizontal_wall_slots.is_in_bounds(wsp):
                 return self.horizontal_wall_slots[wsp]
-            return self.vertical_wall_slots[wsp]
+            elif orientation == WallOrientation.VERTICAL and self.vertical_wall_slots.is_in_bounds(wsp):
+                return self.vertical_wall_slots[wsp]
+            else:
+                return None
+            
+    def get_occupied_fields(self) -> list[Position]:
+        """Return a list of positions occupied by pawns."""
+        occupied_fields = []
+        for row in range(self.board_width):
+            for col in range(self.board_width):
+                position = Position(row, col)
+                field = self.fields[position]
+                if field is not None and field.pawn is not None:
+                    occupied_fields.append(position)
+        return occupied_fields
+
+    def print_occupied_fields(self):
+        """Print the positions of all occupied fields in a formatted grid."""
+        print("\nBoard State:")
+        print("  " + " ".join(f"{i}" for i in range(self.board_width)))
+        print("  " + "-" * (self.board_width * 2 - 1))
         
+        for row in range(self.board_width):
+            row_str = f"{row}|"
+            for col in range(self.board_width):
+                position = Position(row, col)
+                field = self.fields[position]
+                if field is not None and field.pawn is not None:
+                    row_str += f"{field.pawn.id} "
+                else:
+                    row_str += ". "
+            print(row_str.rstrip())
+        print()
+
         
 
             
@@ -232,23 +278,28 @@ class Board(BoardBase):
 
 if __name__ == "__main__":
     board = Board()
+    board.print_occupied_fields()
 
-    # Move pawn 1 to a new position
-    new_position_pawn1 = Position(1, 4)
-    board.move_pawn(board.pawn1, new_position_pawn1)
-    print(f"Pawn 1 moved to {new_position_pawn1}")
+    # # Move pawn 1 to a new position
+    # new_position_pawn1 = Position(1, 4)
+    # board.move_pawn(board.pawn1, new_position_pawn1)
+    # print(f"Pawn 1 moved to {new_position_pawn1}")
 
-    # Move pawn 2 to a new position
-    new_position_pawn2 = Position(7, 4)
-    board.move_pawn(board.pawn2, new_position_pawn2)
-    print(f"Pawn 2 moved to {new_position_pawn2}")
+    # board.print_occupied_fields()
 
-    # Place a horizontal wall
-    wall_position_horizontal = Position(4, 4)
-    board.place_wall(WallOrientation.HORIZONTAL, wall_position_horizontal)
-    print(f"Horizontal wall placed at {wall_position_horizontal}")
+    # # Move pawn 2 to a new position
+    # new_position_pawn2 = Position(7, 4)
+    # board.move_pawn(board.pawn2, new_position_pawn2)
+    # print(f"Pawn 2 moved to {new_position_pawn2}")
 
-    # Place a vertical wall
-    wall_position_vertical = Position(5, 5)
-    board.place_wall(WallOrientation.VERTICAL, wall_position_vertical)
-    print(f"Vertical wall placed at {wall_position_vertical}")
+    # board.print_occupied_fields()
+
+    # # Place a horizontal wall
+    # wall_position_horizontal = Position(4, 4)
+    # board.place_wall(WallOrientation.HORIZONTAL, wall_position_horizontal)
+    # print(f"Horizontal wall placed at {wall_position_horizontal}")
+
+    # # Place a vertical wall
+    # wall_position_vertical = Position(5, 5)
+    # board.place_wall(WallOrientation.VERTICAL, wall_position_vertical)
+    # print(f"Vertical wall placed at {wall_position_vertical}")
