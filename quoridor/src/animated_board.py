@@ -9,17 +9,22 @@ SCREEN_HEIGHT = 800
 BOARD_SIZE = 9
 CELL_SIZE = min(SCREEN_WIDTH, SCREEN_HEIGHT) // BOARD_SIZE
 WALL_THICKNESS = 8
+GRID_THICKNESS = WALL_THICKNESS  # Make grid lines as thick as walls
 PLAYER_RADIUS = CELL_SIZE // 3
 DOT_RADIUS = 8
+CORNER_RADIUS = 4  # Radius for rounded corners
+WALL_CORNER_RADIUS = 2  # Smaller radius for wall corners
 
 # Colors
-BACKGROUND = (240, 240, 240)
-GRID_COLOR = (180, 180, 180)
-PLAYER1_COLOR = (255, 100, 100)  # Light Red
-PLAYER2_COLOR = (100, 100, 255)  # Light Blue
-WALL_COLOR = (60, 60, 60)        # Dark Grey
-VALID_MOVE_COLOR = (100, 255, 100)  # Light Green
-WALL_PREVIEW_COLOR = (150, 150, 150)  # Grey
+BOARD_COLOR = (120, 100, 80)      # Darker Coffee
+GRID_COLOR = (60, 40, 20)      # Darker Dun
+WALL_COLOR = (255, 223, 186)     # Light yellow wood
+BACKGROUND = BOARD_COLOR
+PLAYER1_COLOR = (153, 0, 0)  #  Red
+PLAYER2_COLOR = (24, 24, 132)  # Light Blue
+PLAYER1_LIGHT_COLOR = (255, 150, 150)  # Light Red for player 1's valid moves
+PLAYER2_LIGHT_COLOR = (150, 150, 255)  # Light Blue for player 2's valid moves
+WALL_PREVIEW_COLOR = (255, 223, 186, 128)  # Semi-transparent light yellow wood
 
 class AnimatedBoard:
     def __init__(self):
@@ -48,15 +53,18 @@ class AnimatedBoard:
 
     def draw_grid(self):
         self.screen.fill(BACKGROUND)
-        for i in range(BOARD_SIZE + 1):
-            # Vertical lines
-            pygame.draw.line(self.screen, GRID_COLOR,
-                           (i * CELL_SIZE, 0),
-                           (i * CELL_SIZE, BOARD_SIZE * CELL_SIZE))
-            # Horizontal lines
-            pygame.draw.line(self.screen, GRID_COLOR,
-                           (0, i * CELL_SIZE),
-                           (BOARD_SIZE * CELL_SIZE, i * CELL_SIZE))
+        
+        # Draw squares with rounded corners
+        for row in range(BOARD_SIZE):
+            for col in range(BOARD_SIZE):
+                x = col * CELL_SIZE + GRID_THICKNESS // 2
+                y = row * CELL_SIZE + GRID_THICKNESS // 2
+                width = CELL_SIZE - GRID_THICKNESS
+                height = CELL_SIZE - GRID_THICKNESS
+                
+                # Draw rounded rectangle
+                rect = pygame.Rect(x, y, width, height)
+                pygame.draw.rect(self.screen, GRID_COLOR, rect, border_radius=CORNER_RADIUS)
 
     def draw_pawns(self):
         # Draw pawn 1
@@ -73,10 +81,11 @@ class AnimatedBoard:
             for col in range(BOARD_SIZE - 1):
                 pos = Position(row, col)
                 if self.board.horizontal_wall_slots[pos].occupied:
-                    x = col * CELL_SIZE
+                    x = col * CELL_SIZE + GRID_THICKNESS // 2
                     y = (row + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                    pygame.draw.rect(self.screen, WALL_COLOR,
-                                   (x, y, CELL_SIZE * 2, WALL_THICKNESS))
+                    width = CELL_SIZE * 2 - GRID_THICKNESS
+                    rect = pygame.Rect(x, y, width, WALL_THICKNESS)
+                    pygame.draw.rect(self.screen, WALL_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
 
         # Draw placed vertical walls
         for row in range(BOARD_SIZE - 1):
@@ -84,34 +93,40 @@ class AnimatedBoard:
                 pos = Position(row, col)
                 if self.board.vertical_wall_slots[pos].occupied:
                     x = (col + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                    y = row * CELL_SIZE
-                    pygame.draw.rect(self.screen, WALL_COLOR,
-                                   (x, y, WALL_THICKNESS, CELL_SIZE * 2))
+                    y = row * CELL_SIZE + GRID_THICKNESS // 2
+                    height = CELL_SIZE * 2 - GRID_THICKNESS
+                    rect = pygame.Rect(x, y, WALL_THICKNESS, height)
+                    pygame.draw.rect(self.screen, WALL_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
 
     def draw_valid_moves(self):
         if self.selected_pawn and self.valid_moves:
+            # Choose color based on selected pawn
+            valid_move_color = (PLAYER1_LIGHT_COLOR 
+                              if self.selected_pawn.id == 1 
+                              else PLAYER2_LIGHT_COLOR)
+            
             for move in self.valid_moves:
                 screen_pos = self.board_to_screen_position(move)
-                pygame.draw.circle(self.screen, VALID_MOVE_COLOR, screen_pos, DOT_RADIUS)
+                pygame.draw.circle(self.screen, valid_move_color, screen_pos, DOT_RADIUS)
 
     def draw_wall_preview(self):
         if self.placing_wall and self.wall_preview_pos:
             pos = self.wall_preview_pos
             try:
-                # Check if wall can be placed at current position
                 if self.board.can_place_wall_at_position(self.wall_orientation, pos):
                     if self.wall_orientation == WallOrientation.HORIZONTAL:
-                        x = pos.col * CELL_SIZE
+                        x = pos.col * CELL_SIZE + GRID_THICKNESS // 2
                         y = (pos.row + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                        pygame.draw.rect(self.screen, WALL_PREVIEW_COLOR,
-                                       (x, y, CELL_SIZE * 2, WALL_THICKNESS))
+                        width = CELL_SIZE * 2 - GRID_THICKNESS
+                        rect = pygame.Rect(x, y, width, WALL_THICKNESS)
+                        pygame.draw.rect(self.screen, WALL_PREVIEW_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
                     else:
                         x = (pos.col + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                        y = pos.row * CELL_SIZE
-                        pygame.draw.rect(self.screen, WALL_PREVIEW_COLOR,
-                                       (x, y, WALL_THICKNESS, CELL_SIZE * 2))
+                        y = pos.row * CELL_SIZE + GRID_THICKNESS // 2
+                        height = CELL_SIZE * 2 - GRID_THICKNESS
+                        rect = pygame.Rect(x, y, WALL_THICKNESS, height)
+                        pygame.draw.rect(self.screen, WALL_PREVIEW_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
             except (ValueError, IndexError):
-                # Don't show preview if position is invalid
                 pass
 
     def handle_click(self, pos):
