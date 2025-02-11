@@ -249,95 +249,24 @@ class Board(BoardBase):
                 if field is not None and field.pawn is not None:
                     occupied_fields.append(position)
         return occupied_fields
-
-    def print_occupied_fields(self):
-        """Print the positions of all occupied fields in a formatted grid."""
-        print("\nBoard State:")
-        print("  " + " ".join(f"{i}" for i in range(self.board_width)))
-        print("  " + "-" * (self.board_width * 2 - 1))
-        
-        for row in range(self.board_width):
-            row_str = f"{row}|"
-            for col in range(self.board_width):
-                position = Position(row, col)
-                field = self.fields[position]
-                if field is not None and field.pawn is not None:
-                    row_str += f"{field.pawn.id} "
-                else:
-                    row_str += ". "
-            print(row_str.rstrip())
-        print()
-
-    def print_walls(self):
-        """Print the positions of all placed walls in a single formatted grid."""
-        print("\nWall Positions:")
-        print("  " + " ".join(f"{i}" for i in range(self.board_width)))
-        print("  " + "-" * (self.board_width * 2 - 1))
-        
-        for row in range(self.board_width):
-            row_str = f"{row}|"
-            for col in range(self.board_width):
-                position = Position(row, col)
-                # Check for horizontal wall
-                has_horizontal = (row < self.board_width - 1 and 
-                                self.horizontal_wall_slots.is_in_bounds(position) and 
-                                self.horizontal_wall_slots[position].occupied)
-                # Check for vertical wall
-                has_vertical = (col < self.board_width - 1 and 
-                            self.vertical_wall_slots.is_in_bounds(position) and 
-                            self.vertical_wall_slots[position].occupied)
-                
-                if has_horizontal and has_vertical:
-                    row_str += "╬ "  # Intersection of horizontal and vertical walls
-                elif has_horizontal:
-                    row_str += "═ "  # Horizontal wall
-                elif has_vertical:
-                    row_str += "║ "  # Vertical wall
-                else:
-                    row_str += ". "
-            print(row_str.rstrip())
-        print()
             
 
 # Example usage:
 
 if __name__ == "__main__":
+    from quoridor.src.utils.board_visualizer import BoardVisualizer
+    
     board = Board()
+    visualizer = BoardVisualizer(board)
 
     # Place a horizontal wall
     wall_position_horizontal = Position(5, 4)
     board.place_wall(WallOrientation.HORIZONTAL, wall_position_horizontal)
     print(f"Horizontal wall placed at {wall_position_horizontal}")
-
-    board.print_walls()
+    visualizer.print_walls()
 
     # Place a vertical wall
     wall_position_vertical = Position(4, 4)
     board.place_wall(WallOrientation.VERTICAL, wall_position_vertical)
     print(f"Vertical wall placed at {wall_position_vertical}")
-
-    board.print_walls()
-
-    # # Move pawn 1 to a new position
-    # new_position_pawn1 = Position(1, 4)
-    # board.move_pawn(board.pawn1, new_position_pawn1)
-    # print(f"Pawn 1 moved to {new_position_pawn1}")
-
-    # board.print_occupied_fields()
-
-    # # Move pawn 2 to a new position
-    # new_position_pawn2 = Position(7, 4)
-    # board.move_pawn(board.pawn2, new_position_pawn2)
-    # print(f"Pawn 2 moved to {new_position_pawn2}")
-
-    # board.print_occupied_fields()
-
-    # # Place a horizontal wall
-    # wall_position_horizontal = Position(4, 4)
-    # board.place_wall(WallOrientation.HORIZONTAL, wall_position_horizontal)
-    # print(f"Horizontal wall placed at {wall_position_horizontal}")
-
-    # # Place a vertical wall
-    # wall_position_vertical = Position(5, 5)
-    # board.place_wall(WallOrientation.VERTICAL, wall_position_vertical)
-    # print(f"Vertical wall placed at {wall_position_vertical}")
+    visualizer.print_walls()
