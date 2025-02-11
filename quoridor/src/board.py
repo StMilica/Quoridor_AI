@@ -148,7 +148,6 @@ class Board(BoardBase):
                 not self.horizontal_wall_slots[position].occupied
                 and self.horizontal_wall_slots[position].can_be_occupied
                 and not self.horizontal_wall_slots[adjacent_horizontal_slot_position].occupied
-                and self.horizontal_wall_slots[adjacent_horizontal_slot_position].can_be_occupied
                 and not self.vertical_wall_slots[position].occupied
             )
         
@@ -157,7 +156,6 @@ class Board(BoardBase):
             return (
                 not self.vertical_wall_slots[position].occupied
                 and self.vertical_wall_slots[position].can_be_occupied
-                and self.vertical_wall_slots[adjacent_vertical_slot_position].can_be_occupied
                 and not self.vertical_wall_slots[adjacent_vertical_slot_position].occupied
                 and not self.horizontal_wall_slots[position].occupied
             )
@@ -270,15 +268,55 @@ class Board(BoardBase):
             print(row_str.rstrip())
         print()
 
+    def print_walls(self):
+        """Print the positions of all placed walls in a single formatted grid."""
+        print("\nWall Positions:")
+        print("  " + " ".join(f"{i}" for i in range(self.board_width)))
+        print("  " + "-" * (self.board_width * 2 - 1))
         
-
+        for row in range(self.board_width):
+            row_str = f"{row}|"
+            for col in range(self.board_width):
+                position = Position(row, col)
+                # Check for horizontal wall
+                has_horizontal = (row < self.board_width - 1 and 
+                                self.horizontal_wall_slots.is_in_bounds(position) and 
+                                self.horizontal_wall_slots[position].occupied)
+                # Check for vertical wall
+                has_vertical = (col < self.board_width - 1 and 
+                            self.vertical_wall_slots.is_in_bounds(position) and 
+                            self.vertical_wall_slots[position].occupied)
+                
+                if has_horizontal and has_vertical:
+                    row_str += "╬ "  # Intersection of horizontal and vertical walls
+                elif has_horizontal:
+                    row_str += "═ "  # Horizontal wall
+                elif has_vertical:
+                    row_str += "║ "  # Vertical wall
+                else:
+                    row_str += ". "
+            print(row_str.rstrip())
+        print()
             
 
 # Example usage:
 
 if __name__ == "__main__":
     board = Board()
-    board.print_occupied_fields()
+
+    # Place a horizontal wall
+    wall_position_horizontal = Position(5, 4)
+    board.place_wall(WallOrientation.HORIZONTAL, wall_position_horizontal)
+    print(f"Horizontal wall placed at {wall_position_horizontal}")
+
+    board.print_walls()
+
+    # Place a vertical wall
+    wall_position_vertical = Position(4, 4)
+    board.place_wall(WallOrientation.VERTICAL, wall_position_vertical)
+    print(f"Vertical wall placed at {wall_position_vertical}")
+
+    board.print_walls()
 
     # # Move pawn 1 to a new position
     # new_position_pawn1 = Position(1, 4)

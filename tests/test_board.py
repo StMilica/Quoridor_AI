@@ -84,8 +84,20 @@ def test_pawn_jump_over_adjacent_pawn(board):
 
 def test_blocked_jump_movement(board):
     """Test movement options when jump is blocked by wall."""
-    # Setup pawns
-    board.move_pawn(board.pawn2, Position(2, 4))
+    # Setup pawns - first move pawn2 up from (8,4) to (2,4)
+    intermediate_positions = [
+        Position(7, 4),
+        Position(6, 4),
+        Position(5, 4),
+        Position(4, 4),
+        Position(3, 4),
+        Position(2, 4)
+    ]
+    
+    for pos in intermediate_positions:
+        board.move_pawn(board.pawn2, pos)
+    
+    # Move pawn1 down from (0,4) to (1,4)
     board.move_pawn(board.pawn1, Position(1, 4))
     
     # Place blocking wall
