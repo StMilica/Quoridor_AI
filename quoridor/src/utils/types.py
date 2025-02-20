@@ -10,9 +10,9 @@ class Position:
         return iter((self.row, self.col))
     
     def __eq__(self, other):
-        if isinstance(other, Position):
-            return self.row == other.row and self.col == other.col
-        return False
+        if not isinstance(other, Position):
+            return False
+        return self.row == other.row and self.col == other.col
 
     def __repr__(self):
         return f"Position(row={self.row}, col={self.col})"
@@ -26,6 +26,12 @@ class Position:
         if isinstance(other, Position):
             return Position(self.row - other.row, self.col - other.col)
         return NotImplemented
+
+    def __hash__(self):
+        return hash((self.row, self.col))
+
+    def __str__(self):
+        return f"Position(row={self.row}, col={self.col})"
 
 class WallOrientation(Enum):
     HORIZONTAL = 1

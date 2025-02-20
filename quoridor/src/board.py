@@ -160,41 +160,49 @@ class Board(BoardBase):
                 and not self.horizontal_wall_slots[position].occupied
             )
 
-    def is_path_blocked(self, start_position, end_position):
-        """Check if a path is blocked by walls using BFS."""
+    def is_path_blocked(self, start_position, target_row):
+        """
+        Check if a path exists from start_position to the target row.
+        
+        Args:
+            start_position (Position): Starting position
+            target_row (int): Target row to reach
+            
+        Returns:
+            bool: True if path is blocked, False if path exists
+        """
         directions = [
-            (0, 1),  # right
-            (1, 0),  # down
-            (0, -1), # left
-            (-1, 0)  # up
+            (0, 1),   # right
+            (1, 0),   # down
+            (0, -1),  # left
+            (-1, 0)   # up
         ]
 
         visited = set()
         queue = deque([start_position])
+        visited.add(start_position)
 
         while queue:
             current_position = queue.popleft()
-            if current_position == end_position:
-                return False  # Path is not blocked
+            
+            # Check if we've reached the target row
+            if current_position.row == target_row:
+                return False  # Path exists
 
             for direction in directions:
                 new_row = current_position.row + direction[0]
                 new_col = current_position.col + direction[1]
                 new_position = Position(new_row, new_col)
 
-                if not self.fields.is_in_bounds(new_position):
-                    continue
-
-                if new_position in visited:
-                    continue
-
-                if not self.is_valid_move(current_position, new_position):
+                if (not self.fields.is_in_bounds(new_position) or 
+                    new_position in visited or 
+                    not self.can_pass_between_adjacent_positions(current_position, new_position)):
                     continue
 
                 visited.add(new_position)
                 queue.append(new_position)
 
-        return True  # Path is blocked
+        return True  # No path exists
     
     def get_surrounding_wall_slots(self, position, orientation, wall_slot_positions: list[WallSlotPosition]):
         wall_slots = []

@@ -2,18 +2,21 @@ import pygame
 import sys
 from quoridor.src.board import Board
 from quoridor.src.utils.types import Position, WallOrientation
+from quoridor.src.game import Game, GameState
 
 # Constants
 SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 800
+SCREEN_HEIGHT = 850  # Increased height to accommodate info text
 BOARD_SIZE = 9
-CELL_SIZE = min(SCREEN_WIDTH, SCREEN_HEIGHT) // BOARD_SIZE
+CELL_SIZE = min(SCREEN_WIDTH, SCREEN_HEIGHT - 50) // BOARD_SIZE  # Adjusted for new height
 WALL_THICKNESS = 8
 GRID_THICKNESS = WALL_THICKNESS  # Make grid lines as thick as walls
 PLAYER_RADIUS = CELL_SIZE // 3
 DOT_RADIUS = 8
 CORNER_RADIUS = 4  # Radius for rounded corners
 WALL_CORNER_RADIUS = 2  # Smaller radius for wall corners
+ERROR_COLOR = (255, 0, 0)  # Red color for error messages
+ERROR_MESSAGE_DURATION = 3000  # Duration in milliseconds (3 seconds)
 
 # Colors
 BOARD_COLOR = (120, 100, 80)      # Darker Coffee
@@ -33,13 +36,14 @@ class AnimatedBoard:
         pygame.display.set_caption("Quoridor")
         self.clock = pygame.time.Clock()
         
-        # Initialize game board
-        self.board = Board()
+        # Initialize game
+        self.game = Game()
         self.selected_pawn = None
         self.valid_moves = []
         self.placing_wall = False
         self.wall_orientation = WallOrientation.HORIZONTAL
         self.wall_preview_pos = None
+        self.error_message_start = None  # Add this line
 
     def screen_to_board_position(self, screen_pos):
         x, y = screen_pos
@@ -68,11 +72,11 @@ class AnimatedBoard:
 
     def draw_pawns(self):
         # Draw pawn 1
-        pos1 = self.board_to_screen_position(self.board.pawn1.position)
+        pos1 = self.board_to_screen_position(self.game.board.pawn1.position)
         pygame.draw.circle(self.screen, PLAYER1_COLOR, pos1, PLAYER_RADIUS)
         
         # Draw pawn 2
-        pos2 = self.board_to_screen_position(self.board.pawn2.position)
+        pos2 = self.board_to_screen_position(self.game.board.pawn2.position)
         pygame.draw.circle(self.screen, PLAYER2_COLOR, pos2, PLAYER_RADIUS)
 
     def draw_walls(self):
@@ -80,7 +84,7 @@ class AnimatedBoard:
         for row in range(BOARD_SIZE - 1):
             for col in range(BOARD_SIZE - 1):
                 pos = Position(row, col)
-                if self.board.horizontal_wall_slots[pos].occupied:
+                if self.game.board.horizontal_wall_slots[pos].occupied:
                     x = col * CELL_SIZE + GRID_THICKNESS // 2
                     y = (row + 1) * CELL_SIZE - WALL_THICKNESS // 2
                     width = CELL_SIZE * 2 - GRID_THICKNESS
@@ -91,7 +95,7 @@ class AnimatedBoard:
         for row in range(BOARD_SIZE - 1):
             for col in range(BOARD_SIZE - 1):
                 pos = Position(row, col)
-                if self.board.vertical_wall_slots[pos].occupied:
+                if self.game.board.vertical_wall_slots[pos].occupied:
                     x = (col + 1) * CELL_SIZE - WALL_THICKNESS // 2
                     y = row * CELL_SIZE + GRID_THICKNESS // 2
                     height = CELL_SIZE * 2 - GRID_THICKNESS
@@ -99,7 +103,7 @@ class AnimatedBoard:
                     pygame.draw.rect(self.screen, WALL_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
 
     def draw_valid_moves(self):
-        if self.selected_pawn and self.valid_moves:
+        if self.selected_pawn and self.valid_moves and self.selected_pawn.id == self.game.get_current_player():
             # Choose color based on selected pawn
             valid_move_color = (PLAYER1_LIGHT_COLOR 
                               if self.selected_pawn.id == 1 
@@ -113,7 +117,7 @@ class AnimatedBoard:
         if self.placing_wall and self.wall_preview_pos:
             pos = self.wall_preview_pos
             try:
-                if self.board.can_place_wall_at_position(self.wall_orientation, pos):
+                if self.game.board.can_place_wall_at_position(self.wall_orientation, pos):
                     if self.wall_orientation == WallOrientation.HORIZONTAL:
                         x = pos.col * CELL_SIZE + GRID_THICKNESS // 2
                         y = (pos.row + 1) * CELL_SIZE - WALL_THICKNESS // 2
@@ -129,27 +133,67 @@ class AnimatedBoard:
             except (ValueError, IndexError):
                 pass
 
+    def draw_info(self):
+        font = pygame.font.SysFont(None, 24)
+        player1_walls = self.game.get_walls_remaining(1)
+        player2_walls = self.game.get_walls_remaining(2)
+        current_player = self.game.get_current_player()
+        current_player_text = "Red Player" if current_player == 1 else "Blue Player"
+
+        info_text = f"Red Player walls: {player1_walls} | Blue Player walls: {player2_walls} | Current player: {current_player_text}"
+        text_surface = font.render(info_text, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))
+        self.screen.blit(text_surface, text_rect)
+
+        # Display path blocked message
+        if getattr(self.game, 'path_blocked', False):
+            if self.error_message_start is None:
+                self.error_message_start = pygame.time.get_ticks()
+            
+            current_time = pygame.time.get_ticks()
+            if current_time - self.error_message_start < ERROR_MESSAGE_DURATION:
+                error_text1 = "There must remain at least one path"
+                error_text2 = "to the goal for each pawn!"
+                error_font = pygame.font.SysFont(None, 42)
+                
+                # Render first line (moved up by adjusting Y coordinate)
+                error_surface1 = error_font.render(error_text1, True, ERROR_COLOR)
+                error_rect1 = error_surface1.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 180))
+                self.screen.blit(error_surface1, error_rect1)
+                
+                # Render second line (moved up by adjusting Y coordinate)
+                error_surface2 = error_font.render(error_text2, True, ERROR_COLOR)
+                error_rect2 = error_surface2.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 140))
+                self.screen.blit(error_surface2, error_rect2)
+            else:
+                self.error_message_start = None
+                self.game.path_blocked = False
+
+        if self.game.is_game_over():
+            winner = self.game.get_winner()
+            winner_text = "Red Player wins!" if winner == 1 else "Blue Player wins!"
+            winner_font = pygame.font.SysFont(None, 48)  # Bigger font for the winner message
+            winner_surface = winner_font.render(winner_text, True, (255, 255, 0))
+            self.screen.blit(winner_surface, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50))
+
     def handle_click(self, pos):
         board_pos = self.screen_to_board_position(pos)
         
         if self.placing_wall:
-            try:
-                self.board.place_wall(self.wall_orientation, board_pos)
+            if self.game.place_wall(self.wall_orientation, board_pos):
                 self.placing_wall = False
                 self.wall_preview_pos = None
-            except ValueError:
-                pass
         else:
             # Check if clicking on a pawn
-            if board_pos == self.board.pawn1.position:
-                self.selected_pawn = self.board.pawn1
-                self.valid_moves = self.board.get_all_valid_pawn_moves(self.selected_pawn)
-            elif board_pos == self.board.pawn2.position:
-                self.selected_pawn = self.board.pawn2
-                self.valid_moves = self.board.get_all_valid_pawn_moves(self.selected_pawn)
+            if board_pos == self.game.board.pawn1.position: 
+                self.selected_pawn = self.game.board.pawn1
+                self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
+            elif board_pos == self.game.board.pawn2.position:
+                self.selected_pawn = self.game.board.pawn2
+                self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
             # Check if clicking on a valid move
             elif self.selected_pawn and board_pos in self.valid_moves:
-                self.board.move_pawn(self.selected_pawn, board_pos)
+                self.game.move_pawn(board_pos)
                 self.selected_pawn = None
                 self.valid_moves = []
 
@@ -183,6 +227,7 @@ class AnimatedBoard:
             self.draw_walls()
             self.draw_valid_moves()
             self.draw_pawns()
+            self.draw_info()
             if self.placing_wall:
                 self.draw_wall_preview()
 
