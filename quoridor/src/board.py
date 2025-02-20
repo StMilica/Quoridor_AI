@@ -100,7 +100,7 @@ class Board(BoardBase):
                             else:
                                 # Check if the pawn can move to perpendicular directions
                                 for perpendicular_direction in direction.perpendicular_directions():
-                                    perpendicular_position = new_position + perpendicular_direction
+                                    perpendicular_position = new_position + perpendicular_direction.value
                                     if self.fields.is_in_bounds(perpendicular_position) and self.can_pass_between_adjacent_positions(new_position, perpendicular_position):
                                         valid_moves.append(perpendicular_position)
 
