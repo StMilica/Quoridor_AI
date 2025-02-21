@@ -44,6 +44,9 @@ class Game:
         Attempt to move the current player's pawn to the target position.
         Returns True if move was successful, False otherwise.
         """
+        if self.is_game_over():
+            return False
+
         current_pawn = self.board.pawn1 if self.current_player_id == 1 else self.board.pawn2
 
         try:
@@ -60,7 +63,7 @@ class Game:
         Attempt to place a wall for the current player.
         Returns True if wall placement was successful, False otherwise.
         """
-        if self.walls_remaining[self.current_player_id] <= 0:
+        if self.is_game_over() or self.walls_remaining[self.current_player_id] <= 0:
             return False
 
         try:
@@ -98,6 +101,9 @@ class Game:
 
     def get_valid_moves(self) -> list[Position]:
         """Get all valid moves for the current player's pawn."""
+        if self.is_game_over():
+            return []
+        
         current_pawn = self.board.pawn1 if self.current_player_id == 1 else self.board.pawn2
         try:
             return self.board.get_all_valid_pawn_moves(current_pawn)

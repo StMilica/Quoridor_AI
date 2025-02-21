@@ -205,6 +205,10 @@ class AnimatedBoard:
                     pygame.draw.rect(self.screen, WALL_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
 
     def draw_valid_moves(self):
+        # Don't show any moves if game is over
+        if self.game.is_game_over():
+            return
+
         # Draw possible moves for current player's pawn (even when not selected)
         if not self.selected_pawn:
             current_player = self.game.get_current_player()
@@ -234,6 +238,10 @@ class AnimatedBoard:
                 self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
 
     def draw_wall_preview(self):
+        # Don't show wall preview if game is over
+        if self.game.is_game_over():
+            return
+
         current_player = self.game.get_current_player()
         if (not self.pawn_selected_for_move and 
             self.wall_preview_pos and 
@@ -354,13 +362,24 @@ class AnimatedBoard:
     def run(self):
         running = True
         while running:
-            # Update current player's possible moves
-            current_player = self.game.get_current_player()
-            current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
-            if not self.selected_pawn:
-                self.current_pawn_moves = self.game.board.get_all_valid_pawn_moves(current_pawn)
+            # Update current player's possible moves only if game is not over
+            if not self.game.is_game_over():
+                current_player = self.game.get_current_player()
+                current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
+                if not self.selected_pawn:
+                    try:
+                        self.current_pawn_moves = self.game.board.get_all_valid_pawn_moves(current_pawn)
+                    except ValueError:
+                        self.current_pawn_moves = []
+                else:
+                    self.current_pawn_moves = []
             else:
+                # Clear all move indicators and previews when game is over
                 self.current_pawn_moves = []
+                self.valid_moves = []
+                self.wall_preview_pos = None
+                self.selected_pawn = None
+                self.pawn_selected_for_move = False
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
