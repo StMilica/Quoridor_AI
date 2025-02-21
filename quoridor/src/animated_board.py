@@ -25,9 +25,9 @@ WALL_COLOR = (255, 223, 186)     # Light yellow wood
 BACKGROUND = BOARD_COLOR
 PLAYER1_COLOR = (153, 0, 0)  #  Red
 PLAYER2_COLOR = (24, 24, 132)  # Light Blue
-PLAYER1_LIGHT_COLOR = (255, 150, 150)  # Light Red for player 1's valid moves
-PLAYER2_LIGHT_COLOR = (150, 150, 255)  # Light Blue for player 2's valid moves
-WALL_PREVIEW_COLOR = (255, 223, 186, 128)  # Semi-transparent light yellow wood (increased alpha from 96 to 128)
+PLAYER1_LIGHT_COLOR = (255, 150, 150, 128)  # Light Red with alpha for player 1's valid moves
+PLAYER2_LIGHT_COLOR = (150, 150, 255, 128)  # Light Blue with alpha for player 2's valid moves
+WALL_PREVIEW_COLOR = (255, 223, 186, 128)  # Semi-transparent light yellow wood
 
 # Add to the Constants section
 BUTTON_COLOR = (80, 60, 40)  # Darker than board color
@@ -48,6 +48,7 @@ class AnimatedBoard:
         self.game = Game()
         self.selected_pawn = None
         self.valid_moves = []
+        self.current_pawn_moves = []  # Add this line to store current player's moves
         self.wall_preview_pos = None
         self.error_message_start = None
         self.current_wall_orientation = WallOrientation.HORIZONTAL  # Default orientation
@@ -203,15 +204,33 @@ class AnimatedBoard:
                     pygame.draw.rect(self.screen, WALL_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
 
     def draw_valid_moves(self):
+        # Draw possible moves for current player's pawn (even when not selected)
+        if not self.selected_pawn:
+            current_player = self.game.get_current_player()
+            current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
+            valid_move_color = PLAYER1_LIGHT_COLOR if current_player == 1 else PLAYER2_LIGHT_COLOR
+            
+            for move in self.current_pawn_moves:
+                screen_pos = self.board_to_screen_position(move)
+                # Create transparent surface for the dot
+                dot_surface = pygame.Surface((DOT_RADIUS * 2, DOT_RADIUS * 2), pygame.SRCALPHA)
+                pygame.draw.circle(dot_surface, valid_move_color, (DOT_RADIUS, DOT_RADIUS), DOT_RADIUS)
+                # Blit the dot at the correct position, adjusting for the surface size
+                self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
+        
+        # Draw moves for selected pawn (when clicked)
         if self.selected_pawn and self.valid_moves and self.selected_pawn.id == self.game.get_current_player():
-            # Choose color based on selected pawn
             valid_move_color = (PLAYER1_LIGHT_COLOR 
                               if self.selected_pawn.id == 1 
                               else PLAYER2_LIGHT_COLOR)
             
             for move in self.valid_moves:
                 screen_pos = self.board_to_screen_position(move)
-                pygame.draw.circle(self.screen, valid_move_color, screen_pos, DOT_RADIUS)
+                # Create transparent surface for the dot
+                dot_surface = pygame.Surface((DOT_RADIUS * 2, DOT_RADIUS * 2), pygame.SRCALPHA)
+                pygame.draw.circle(dot_surface, valid_move_color, (DOT_RADIUS, DOT_RADIUS), DOT_RADIUS)
+                # Blit the dot at the correct position, adjusting for the surface size
+                self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
 
     def draw_wall_preview(self):
         if self.wall_preview_pos:
@@ -321,6 +340,14 @@ class AnimatedBoard:
     def run(self):
         running = True
         while running:
+            # Update current player's possible moves
+            current_player = self.game.get_current_player()
+            current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
+            if not self.selected_pawn:
+                self.current_pawn_moves = self.game.board.get_all_valid_pawn_moves(current_pawn)
+            else:
+                self.current_pawn_moves = []
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -328,7 +355,6 @@ class AnimatedBoard:
                     if event.button == 1:  # Left click
                         self.handle_click(event.pos)
                 elif event.type == pygame.MOUSEMOTION:
-                    # Update button hover state
                     self.is_button_hovered = self.reset_button_rect.collidepoint(event.pos)
             
             # Update wall preview position when not moving pawn
@@ -339,12 +365,12 @@ class AnimatedBoard:
             # Draw everything
             self.draw_grid()
             self.draw_walls()
-            self.draw_valid_moves()
+            self.draw_valid_moves()  # This will now show moves for current player
             self.draw_pawns()
             self.draw_info()
             if not self.selected_pawn:
                 self.draw_wall_preview()
-            self.draw_reset_button()  # Add this line before flip
+            self.draw_reset_button()
 
             pygame.display.flip()
             self.clock.tick(60)
