@@ -27,7 +27,15 @@ PLAYER1_COLOR = (153, 0, 0)  #  Red
 PLAYER2_COLOR = (24, 24, 132)  # Light Blue
 PLAYER1_LIGHT_COLOR = (255, 150, 150)  # Light Red for player 1's valid moves
 PLAYER2_LIGHT_COLOR = (150, 150, 255)  # Light Blue for player 2's valid moves
-WALL_PREVIEW_COLOR = (255, 223, 186, 128)  # Semi-transparent light yellow wood
+WALL_PREVIEW_COLOR = (255, 223, 186, 128)  # Semi-transparent light yellow wood (increased alpha from 96 to 128)
+
+# Add to the Constants section
+BUTTON_COLOR = (80, 60, 40)  # Darker than board color
+BUTTON_HOVER_COLOR = (100, 80, 60)  # Lighter when hovering
+BUTTON_TEXT_COLOR = (255, 255, 255)  # White text
+BUTTON_WIDTH = 100
+BUTTON_HEIGHT = 30
+BUTTON_MARGIN = 10  # Margin from screen edges
 
 class AnimatedBoard:
     def __init__(self):
@@ -40,10 +48,17 @@ class AnimatedBoard:
         self.game = Game()
         self.selected_pawn = None
         self.valid_moves = []
-        self.placing_wall = False
-        self.wall_orientation = WallOrientation.HORIZONTAL
         self.wall_preview_pos = None
-        self.error_message_start = None  # Add this line
+        self.error_message_start = None
+        self.current_wall_orientation = WallOrientation.HORIZONTAL  # Default orientation
+
+        self.reset_button_rect = pygame.Rect(
+            SCREEN_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN,
+            SCREEN_HEIGHT - BUTTON_HEIGHT - BUTTON_MARGIN,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT
+        )
+        self.is_button_hovered = False
 
     def screen_to_board_position(self, screen_pos):
         x, y = screen_pos
@@ -54,6 +69,91 @@ class AnimatedBoard:
     def board_to_screen_position(self, position):
         return (position.col * CELL_SIZE + CELL_SIZE // 2,
                 position.row * CELL_SIZE + CELL_SIZE // 2)
+
+    def screen_to_wall_position(self, screen_pos, orientation):
+        """Convert screen coordinates to wall position based on closest grid line."""
+        x, y = screen_pos
+        
+        # Calculate distances to grid lines
+        cell_x = x // CELL_SIZE
+        cell_y = y // CELL_SIZE
+        
+        if orientation == WallOrientation.VERTICAL:
+            # For vertical walls, snap to vertical grid lines
+            dist_to_left = x - cell_x * CELL_SIZE
+            dist_to_right = (cell_x + 1) * CELL_SIZE - x
+            
+            if dist_to_left < dist_to_right:
+                col = cell_x - 1
+            else:
+                col = cell_x
+                
+            row = cell_y
+            
+        else:  # HORIZONTAL
+            # For horizontal walls, snap to horizontal grid lines
+            dist_to_top = y - cell_y * CELL_SIZE
+            dist_to_bottom = (cell_y + 1) * CELL_SIZE - y
+            
+            if dist_to_top < dist_to_bottom:
+                row = cell_y - 1
+            else:
+                row = cell_y
+                
+            col = cell_x
+        
+        # Ensure we're within valid wall placement bounds
+        row = max(0, min(row, BOARD_SIZE - 2))
+        col = max(0, min(col, BOARD_SIZE - 2))
+        
+        return Position(row, col)
+
+    def get_wall_placement_info(self, mouse_pos):
+        """Determine the best wall orientation and position based on mouse position."""
+        x, y = mouse_pos
+        cell_x = x // CELL_SIZE
+        cell_y = y // CELL_SIZE
+        
+        # Calculate distances to nearest grid lines
+        x_in_cell = x % CELL_SIZE
+        y_in_cell = y % CELL_SIZE
+        
+        # Define grid line detection threshold
+        GRID_THRESHOLD = WALL_THICKNESS * 2
+        
+        # Check if mouse is near vertical grid lines
+        near_vertical = x_in_cell < GRID_THRESHOLD or x_in_cell > CELL_SIZE - GRID_THRESHOLD
+        # Check if mouse is near horizontal grid lines
+        near_horizontal = y_in_cell < GRID_THRESHOLD or y_in_cell > CELL_SIZE - GRID_THRESHOLD
+        
+        # If near vertical grid line and not near horizontal, force vertical orientation
+        if near_vertical and not near_horizontal:
+            self.current_wall_orientation = WallOrientation.VERTICAL
+        # If near horizontal grid line and not near vertical, force horizontal orientation
+        elif near_horizontal and not near_vertical:
+            self.current_wall_orientation = WallOrientation.HORIZONTAL
+        # If near both or neither, choose based on closest
+        else:
+            dist_to_vertical = min(x_in_cell, CELL_SIZE - x_in_cell)
+            dist_to_horizontal = min(y_in_cell, CELL_SIZE - y_in_cell)
+            self.current_wall_orientation = (
+                WallOrientation.VERTICAL if dist_to_vertical < dist_to_horizontal 
+                else WallOrientation.HORIZONTAL
+            )
+        
+        # Calculate wall position based on orientation
+        if self.current_wall_orientation == WallOrientation.VERTICAL:
+            col = cell_x - 1 if x_in_cell < CELL_SIZE/2 else cell_x
+            row = cell_y
+        else:
+            col = cell_x
+            row = cell_y - 1 if y_in_cell < CELL_SIZE/2 else cell_y
+        
+        # Ensure we're within valid wall placement bounds
+        row = max(0, min(row, BOARD_SIZE - 2))
+        col = max(0, min(col, BOARD_SIZE - 2))
+        
+        return Position(row, col)
 
     def draw_grid(self):
         self.screen.fill(BACKGROUND)
@@ -114,22 +214,27 @@ class AnimatedBoard:
                 pygame.draw.circle(self.screen, valid_move_color, screen_pos, DOT_RADIUS)
 
     def draw_wall_preview(self):
-        if self.placing_wall and self.wall_preview_pos:
-            pos = self.wall_preview_pos
+        if self.wall_preview_pos:
+            pos = self.get_wall_placement_info(self.wall_preview_pos)
             try:
-                if self.game.board.can_place_wall_at_position(self.wall_orientation, pos):
-                    if self.wall_orientation == WallOrientation.HORIZONTAL:
+                if self.game.board.can_place_wall_at_position(self.current_wall_orientation, pos):
+                    # Create a transparent surface for the wall preview
+                    if self.current_wall_orientation == WallOrientation.HORIZONTAL:
+                        width = CELL_SIZE * 2 - GRID_THICKNESS
+                        preview_surface = pygame.Surface((width, WALL_THICKNESS), pygame.SRCALPHA)
+                        pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
+                                       preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
                         x = pos.col * CELL_SIZE + GRID_THICKNESS // 2
                         y = (pos.row + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                        width = CELL_SIZE * 2 - GRID_THICKNESS
-                        rect = pygame.Rect(x, y, width, WALL_THICKNESS)
-                        pygame.draw.rect(self.screen, WALL_PREVIEW_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
+                        self.screen.blit(preview_surface, (x, y))
                     else:
+                        height = CELL_SIZE * 2 - GRID_THICKNESS
+                        preview_surface = pygame.Surface((WALL_THICKNESS, height), pygame.SRCALPHA)
+                        pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
+                                       preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
                         x = (pos.col + 1) * CELL_SIZE - WALL_THICKNESS // 2
                         y = pos.row * CELL_SIZE + GRID_THICKNESS // 2
-                        height = CELL_SIZE * 2 - GRID_THICKNESS
-                        rect = pygame.Rect(x, y, WALL_THICKNESS, height)
-                        pygame.draw.rect(self.screen, WALL_PREVIEW_COLOR, rect, border_radius=WALL_CORNER_RADIUS)
+                        self.screen.blit(preview_surface, (x, y))
             except (ValueError, IndexError):
                 pass
 
@@ -176,26 +281,42 @@ class AnimatedBoard:
             winner_surface = winner_font.render(winner_text, True, (255, 255, 0))
             self.screen.blit(winner_surface, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50))
 
+    def draw_reset_button(self):
+        """Draw the reset button with hover effect"""
+        color = BUTTON_HOVER_COLOR if self.is_button_hovered else BUTTON_COLOR
+        pygame.draw.rect(self.screen, color, self.reset_button_rect, border_radius=5)
+        
+        # Draw button text
+        font = pygame.font.SysFont(None, 24)
+        text_surface = font.render("Reset", True, BUTTON_TEXT_COLOR)
+        text_rect = text_surface.get_rect(center=self.reset_button_rect.center)
+        self.screen.blit(text_surface, text_rect)
+
     def handle_click(self, pos):
+        # Add at the beginning of handle_click method
+        if self.reset_button_rect.collidepoint(pos):
+            self.__init__()  # Reset the game
+            return
+
         board_pos = self.screen_to_board_position(pos)
         
-        if self.placing_wall:
-            if self.game.place_wall(self.wall_orientation, board_pos):
-                self.placing_wall = False
+        # Check if clicking on a pawn
+        if board_pos == self.game.board.pawn1.position and self.game.get_current_player() == 1:
+            self.selected_pawn = self.game.board.pawn1
+            self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
+        elif board_pos == self.game.board.pawn2.position and self.game.get_current_player() == 2:
+            self.selected_pawn = self.game.board.pawn2
+            self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
+        # Check if clicking on a valid move
+        elif self.selected_pawn and board_pos in self.valid_moves:
+            self.game.move_pawn(board_pos)
+            self.selected_pawn = None
+            self.valid_moves = []
+        # Try to place wall if not moving pawn
+        elif not self.selected_pawn:
+            wall_pos = self.get_wall_placement_info(pos)
+            if self.game.place_wall(self.current_wall_orientation, wall_pos):
                 self.wall_preview_pos = None
-        else:
-            # Check if clicking on a pawn
-            if board_pos == self.game.board.pawn1.position: 
-                self.selected_pawn = self.game.board.pawn1
-                self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
-            elif board_pos == self.game.board.pawn2.position:
-                self.selected_pawn = self.game.board.pawn2
-                self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
-            # Check if clicking on a valid move
-            elif self.selected_pawn and board_pos in self.valid_moves:
-                self.game.move_pawn(board_pos)
-                self.selected_pawn = None
-                self.valid_moves = []
 
     def run(self):
         running = True
@@ -206,21 +327,14 @@ class AnimatedBoard:
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # Left click
                         self.handle_click(event.pos)
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_w:  # Toggle wall placement mode
-                        self.placing_wall = not self.placing_wall
-                        self.selected_pawn = None
-                        self.valid_moves = []
-                    elif event.key == pygame.K_r:  # Rotate wall orientation
-                        if self.placing_wall:
-                            self.wall_orientation = (WallOrientation.VERTICAL 
-                                if self.wall_orientation == WallOrientation.HORIZONTAL 
-                                else WallOrientation.HORIZONTAL)
+                elif event.type == pygame.MOUSEMOTION:
+                    # Update button hover state
+                    self.is_button_hovered = self.reset_button_rect.collidepoint(event.pos)
             
-            # Update wall preview position
-            if self.placing_wall:
-                mouse_pos = pygame.mouse.get_pos()
-                self.wall_preview_pos = self.screen_to_board_position(mouse_pos)
+            # Update wall preview position when not moving pawn
+            mouse_pos = pygame.mouse.get_pos()
+            if not self.selected_pawn:
+                self.wall_preview_pos = mouse_pos
 
             # Draw everything
             self.draw_grid()
@@ -228,8 +342,9 @@ class AnimatedBoard:
             self.draw_valid_moves()
             self.draw_pawns()
             self.draw_info()
-            if self.placing_wall:
+            if not self.selected_pawn:
                 self.draw_wall_preview()
+            self.draw_reset_button()  # Add this line before flip
 
             pygame.display.flip()
             self.clock.tick(60)
