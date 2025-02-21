@@ -234,29 +234,32 @@ class AnimatedBoard:
                 self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
 
     def draw_wall_preview(self):
-        if not self.pawn_selected_for_move and self.wall_preview_pos:
-            pos = self.get_wall_placement_info(self.wall_preview_pos)
-            try:
-                if self.game.board.can_place_wall_at_position(self.current_wall_orientation, pos):
-                    # Create a transparent surface for the wall preview
-                    if self.current_wall_orientation == WallOrientation.HORIZONTAL:
-                        width = CELL_SIZE * 2 - GRID_THICKNESS
-                        preview_surface = pygame.Surface((width, WALL_THICKNESS), pygame.SRCALPHA)
-                        pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
-                                       preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
-                        x = pos.col * CELL_SIZE + GRID_THICKNESS // 2
-                        y = (pos.row + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                        self.screen.blit(preview_surface, (x, y))
-                    else:
-                        height = CELL_SIZE * 2 - GRID_THICKNESS
-                        preview_surface = pygame.Surface((WALL_THICKNESS, height), pygame.SRCALPHA)
-                        pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
-                                       preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
-                        x = (pos.col + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                        y = pos.row * CELL_SIZE + GRID_THICKNESS // 2
-                        self.screen.blit(preview_surface, (x, y))
-            except (ValueError, IndexError):
-                pass
+        current_player = self.game.get_current_player()
+        if (not self.pawn_selected_for_move and 
+            self.wall_preview_pos and 
+            self.game.walls_remaining[current_player] > 0):  # Only show preview if walls remain
+                pos = self.get_wall_placement_info(self.wall_preview_pos)
+                try:
+                    if self.game.board.can_place_wall_at_position(self.current_wall_orientation, pos):
+                        # Create a transparent surface for the wall preview
+                        if self.current_wall_orientation == WallOrientation.HORIZONTAL:
+                            width = CELL_SIZE * 2 - GRID_THICKNESS
+                            preview_surface = pygame.Surface((width, WALL_THICKNESS), pygame.SRCALPHA)
+                            pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
+                                           preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
+                            x = pos.col * CELL_SIZE + GRID_THICKNESS // 2
+                            y = (pos.row + 1) * CELL_SIZE - WALL_THICKNESS // 2
+                            self.screen.blit(preview_surface, (x, y))
+                        else:
+                            height = CELL_SIZE * 2 - GRID_THICKNESS
+                            preview_surface = pygame.Surface((WALL_THICKNESS, height), pygame.SRCALPHA)
+                            pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
+                                           preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
+                            x = (pos.col + 1) * CELL_SIZE - WALL_THICKNESS // 2
+                            y = pos.row * CELL_SIZE + GRID_THICKNESS // 2
+                            self.screen.blit(preview_surface, (x, y))
+                except (ValueError, IndexError):
+                    pass
 
     def draw_info(self):
         font = pygame.font.SysFont(None, 24)

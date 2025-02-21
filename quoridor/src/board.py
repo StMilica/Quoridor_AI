@@ -93,31 +93,27 @@ class Board(BoardBase):
                         valid_moves.append(new_position)
                     else:
                         jump_over_position = new_position + direction.value
+                        # Check if we can jump over or need to move sideways
                         if self.fields.is_in_bounds(jump_over_position):
                             if self.can_pass_between_adjacent_positions(new_position, jump_over_position):
-                                # Jump over it there isn't a wall behind and the position is in bounds
                                 valid_moves.append(jump_over_position)
                             else:
-                                # Check if the pawn can move to perpendicular directions
+                                # Add perpendicular moves if can't jump over
                                 for perpendicular_direction in direction.perpendicular_directions():
                                     perpendicular_position = new_position + perpendicular_direction.value
-                                    if self.fields.is_in_bounds(perpendicular_position) and self.can_pass_between_adjacent_positions(new_position, perpendicular_position):
+                                    if (self.fields.is_in_bounds(perpendicular_position) and 
+                                        self.can_pass_between_adjacent_positions(new_position, perpendicular_position) and
+                                        not self.fields[perpendicular_position].is_occupied()):
                                         valid_moves.append(perpendicular_position)
-
-                        elif pawn.desired_direction() == direction and not self.fields.is_in_bounds(jump_over_position):
-                            # Jumping over the pawn wins the game
-                            valid_moves.append(jump_over_position)
-                            print("Victory, pawn jumps over the oponent pawn over the edge of the board")
-                            # TODO: Handle it any way you want within the game logic!
+                        else:
+                            # If jump over position is out of bounds, check perpendicular moves
+                            for perpendicular_direction in direction.perpendicular_directions():
+                                perpendicular_position = new_position + perpendicular_direction.value
+                                if (self.fields.is_in_bounds(perpendicular_position) and 
+                                    self.can_pass_between_adjacent_positions(new_position, perpendicular_position) and
+                                    not self.fields[perpendicular_position].is_occupied()):
+                                    valid_moves.append(perpendicular_position)
         
-        # If valid moves are empty, the pawn is blocked, this is an edge case that needs to be solved by the game logic
-        # In some cases raise an error, in other cases allow for a diagonal or any other kind of jump that needs to be checked properly and handled as a custom edge case.
-        # But he should either win the game or be able to move forward, there are no other options.
-        if not valid_moves:
-            # TODO: Handle the jump over for a specific edge case that happens here, or declare a win game!
-            print("Pawn is blocked, handle it as a custom edge case or declare victory")
-            raise ValueError("Pawn is blocked")
-    
         return valid_moves
 
         
