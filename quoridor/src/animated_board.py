@@ -52,6 +52,7 @@ class AnimatedBoard:
         self.wall_preview_pos = None
         self.error_message_start = None
         self.current_wall_orientation = WallOrientation.HORIZONTAL  # Default orientation
+        self.pawn_selected_for_move = False  # Add this flag
 
         self.reset_button_rect = pygame.Rect(
             SCREEN_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN,
@@ -233,7 +234,7 @@ class AnimatedBoard:
                 self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
 
     def draw_wall_preview(self):
-        if self.wall_preview_pos:
+        if not self.pawn_selected_for_move and self.wall_preview_pos:
             pos = self.get_wall_placement_info(self.wall_preview_pos)
             try:
                 if self.game.board.can_place_wall_at_position(self.current_wall_orientation, pos):
@@ -318,24 +319,34 @@ class AnimatedBoard:
             return
 
         board_pos = self.screen_to_board_position(pos)
-        
-        # Check if clicking on a pawn
-        if board_pos == self.game.board.pawn1.position and self.game.get_current_player() == 1:
-            self.selected_pawn = self.game.board.pawn1
-            self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
-        elif board_pos == self.game.board.pawn2.position and self.game.get_current_player() == 2:
-            self.selected_pawn = self.game.board.pawn2
-            self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
+        current_player = self.game.get_current_player()
+        current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
+
+        # Check if clicking on current player's pawn
+        if board_pos == current_pawn.position:
+            if self.selected_pawn == current_pawn:
+                # Clicking the same pawn again - toggle selection
+                self.selected_pawn = None
+                self.valid_moves = []
+                self.pawn_selected_for_move = False
+            else:
+                # First time clicking the pawn - select it and show moves
+                self.selected_pawn = current_pawn
+                self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
+                self.pawn_selected_for_move = True
         # Check if clicking on a valid move
-        elif self.selected_pawn and board_pos in self.valid_moves:
+        elif self.selected_pawn and self.pawn_selected_for_move and board_pos in self.valid_moves:
             self.game.move_pawn(board_pos)
             self.selected_pawn = None
             self.valid_moves = []
+            self.pawn_selected_for_move = False
         # Try to place wall if not moving pawn
-        elif not self.selected_pawn:
+        elif not self.pawn_selected_for_move:
             wall_pos = self.get_wall_placement_info(pos)
             if self.game.place_wall(self.current_wall_orientation, wall_pos):
                 self.wall_preview_pos = None
+                self.selected_pawn = None
+                self.valid_moves = []
 
     def run(self):
         running = True
