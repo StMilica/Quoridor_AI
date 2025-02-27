@@ -49,6 +49,13 @@ You can run the game directly from the command line:
 python main.py
 ```
 
+### Controls
+- **Mouse Click**: Select and move pawns, place walls
+- **Reset Button**: Start a new game (bottom right corner)
+- Wall placement is automatic based on mouse position:
+  - Hover near vertical grid lines for vertical walls
+  - Hover near horizontal grid lines for horizontal walls
+
 ### Run Unit Tests
 To verify the functionality of the game, run the test suite:
 

@@ -9,33 +9,43 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 850  # Increased height to accommodate info text
 BOARD_SIZE = 9
 CELL_SIZE = min(SCREEN_WIDTH, SCREEN_HEIGHT - 50) // BOARD_SIZE  # Adjusted for new height
-WALL_THICKNESS = 8
+WALL_THICKNESS = 10
 GRID_THICKNESS = WALL_THICKNESS  # Make grid lines as thick as walls
 PLAYER_RADIUS = CELL_SIZE // 3
 DOT_RADIUS = 8
-CORNER_RADIUS = 4  # Radius for rounded corners
+CORNER_RADIUS = 2  # Radius for rounded corners
 WALL_CORNER_RADIUS = 2  # Smaller radius for wall corners
-ERROR_COLOR = (255, 0, 0)  # Red color for error messages
+ERROR_COLOR = (112, 25, 26)  # Red color for error messages
 ERROR_MESSAGE_DURATION = 3000  # Duration in milliseconds (3 seconds)
 
 # Colors
-BOARD_COLOR = (120, 100, 80)      # Darker Coffee
-GRID_COLOR = (60, 40, 20)      # Darker Dun
-WALL_COLOR = (255, 223, 186)     # Light yellow wood
+# BOARD_COLOR = (120, 100, 80)      # Darker Coffee
+# GRID_COLOR = (60, 40, 20)      # Darker Dun
+# WALL_COLOR = (255, 223, 186)     # Light yellow wood
+# BACKGROUND = BOARD_COLOR
+# PLAYER1_COLOR = (153, 0, 0)  #  Red
+# PLAYER2_COLOR = (24, 24, 132)  # Light Blue
+# PLAYER1_LIGHT_COLOR = (255, 150, 150, 128)  # Light Red with alpha for player 1's valid moves
+# PLAYER2_LIGHT_COLOR = (150, 150, 255, 128)  # Light Blue with alpha for player 2's valid moves
+# WALL_PREVIEW_COLOR = (255, 223, 186, 128)  # Semi-transparent light yellow wood
+
+BOARD_COLOR = (77, 64, 49)
+GRID_COLOR = (54, 43, 32)
+WALL_COLOR = (199, 197, 187)     # Light yellow wood
 BACKGROUND = BOARD_COLOR
-PLAYER1_COLOR = (153, 0, 0)  #  Red
-PLAYER2_COLOR = (24, 24, 132)  # Light Blue
-PLAYER1_LIGHT_COLOR = (255, 150, 150, 128)  # Light Red with alpha for player 1's valid moves
-PLAYER2_LIGHT_COLOR = (150, 150, 255, 128)  # Light Blue with alpha for player 2's valid moves
-WALL_PREVIEW_COLOR = (255, 223, 186, 128)  # Semi-transparent light yellow wood
+PLAYER1_COLOR = (137, 46, 47)  #  Red
+PLAYER2_COLOR = (16, 112, 143)  # Light Blue
+PLAYER1_LIGHT_COLOR = (137, 46, 47, 128)  # Light Red with alpha for player 1's valid moves
+PLAYER2_LIGHT_COLOR = (16, 112, 143, 128)  # Light Blue with alpha for player 2's valid moves
+WALL_PREVIEW_COLOR = (199, 197, 187, 128)  # Semi-transparent light yellow wood
 
 # Add to the Constants section
-BUTTON_COLOR = (80, 60, 40)  # Darker than board color
+BUTTON_COLOR = (46, 36, 27)  # Darker than board color
 BUTTON_HOVER_COLOR = (100, 80, 60)  # Lighter when hovering
-BUTTON_TEXT_COLOR = (255, 255, 255)  # White text
+BUTTON_TEXT_COLOR = (199, 197, 187)
 BUTTON_WIDTH = 100
 BUTTON_HEIGHT = 30
-BUTTON_MARGIN = 10  # Margin from screen edges
+BUTTON_MARGIN = 15  # Margin from screen edges
 
 class AnimatedBoard:
     def __init__(self):
@@ -209,33 +219,26 @@ class AnimatedBoard:
         if self.game.is_game_over():
             return
 
-        # Draw possible moves for current player's pawn (even when not selected)
-        if not self.selected_pawn:
-            current_player = self.game.get_current_player()
-            current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
-            valid_move_color = PLAYER1_LIGHT_COLOR if current_player == 1 else PLAYER2_LIGHT_COLOR
-            
-            for move in self.current_pawn_moves:
-                screen_pos = self.board_to_screen_position(move)
-                # Create transparent surface for the dot
-                dot_surface = pygame.Surface((DOT_RADIUS * 2, DOT_RADIUS * 2), pygame.SRCALPHA)
+        # Get mouse position
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_board_pos = self.screen_to_board_position(mouse_pos)
+
+        # Draw possible moves for current player's pawn
+        current_player = self.game.get_current_player()
+        current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
+        valid_move_color = PLAYER1_LIGHT_COLOR if current_player == 1 else PLAYER2_LIGHT_COLOR
+        hover_move_color = (valid_move_color[0], valid_move_color[1], valid_move_color[2], 224)  # Less transparent color
+
+        for move in self.current_pawn_moves:
+            screen_pos = self.board_to_screen_position(move)
+            # Create transparent surface for the dot
+            dot_surface = pygame.Surface((DOT_RADIUS * 2, DOT_RADIUS * 2), pygame.SRCALPHA)
+            if move == mouse_board_pos:
+                pygame.draw.circle(dot_surface, hover_move_color, (DOT_RADIUS, DOT_RADIUS), DOT_RADIUS)
+            else:
                 pygame.draw.circle(dot_surface, valid_move_color, (DOT_RADIUS, DOT_RADIUS), DOT_RADIUS)
-                # Blit the dot at the correct position, adjusting for the surface size
-                self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
-        
-        # Draw moves for selected pawn (when clicked)
-        if self.selected_pawn and self.valid_moves and self.selected_pawn.id == self.game.get_current_player():
-            valid_move_color = (PLAYER1_LIGHT_COLOR 
-                              if self.selected_pawn.id == 1 
-                              else PLAYER2_LIGHT_COLOR)
-            
-            for move in self.valid_moves:
-                screen_pos = self.board_to_screen_position(move)
-                # Create transparent surface for the dot
-                dot_surface = pygame.Surface((DOT_RADIUS * 2, DOT_RADIUS * 2), pygame.SRCALPHA)
-                pygame.draw.circle(dot_surface, valid_move_color, (DOT_RADIUS, DOT_RADIUS), DOT_RADIUS)
-                # Blit the dot at the correct position, adjusting for the surface size
-                self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
+            # Blit the dot at the correct position, adjusting for the surface size
+            self.screen.blit(dot_surface, (screen_pos[0] - DOT_RADIUS, screen_pos[1] - DOT_RADIUS))
 
     def draw_wall_preview(self):
         # Don't show wall preview if game is over
@@ -247,27 +250,39 @@ class AnimatedBoard:
             self.wall_preview_pos and 
             self.game.walls_remaining[current_player] > 0):  # Only show preview if walls remain
                 pos = self.get_wall_placement_info(self.wall_preview_pos)
-                try:
-                    if self.game.board.can_place_wall_at_position(self.current_wall_orientation, pos):
-                        # Create a transparent surface for the wall preview
-                        if self.current_wall_orientation == WallOrientation.HORIZONTAL:
-                            width = CELL_SIZE * 2 - GRID_THICKNESS
-                            preview_surface = pygame.Surface((width, WALL_THICKNESS), pygame.SRCALPHA)
-                            pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
-                                           preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
-                            x = pos.col * CELL_SIZE + GRID_THICKNESS // 2
-                            y = (pos.row + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                            self.screen.blit(preview_surface, (x, y))
-                        else:
-                            height = CELL_SIZE * 2 - GRID_THICKNESS
-                            preview_surface = pygame.Surface((WALL_THICKNESS, height), pygame.SRCALPHA)
-                            pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
-                                           preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
-                            x = (pos.col + 1) * CELL_SIZE - WALL_THICKNESS // 2
-                            y = pos.row * CELL_SIZE + GRID_THICKNESS // 2
-                            self.screen.blit(preview_surface, (x, y))
-                except (ValueError, IndexError):
-                    pass
+                x, y = self.wall_preview_pos
+                cell_x = x % CELL_SIZE
+                cell_y = y % CELL_SIZE
+
+                # Define grid line detection threshold
+                GRID_THRESHOLD = WALL_THICKNESS * 2
+
+                # Check if mouse is near vertical or horizontal grid lines
+                near_vertical = cell_x < GRID_THRESHOLD or cell_x > CELL_SIZE - GRID_THRESHOLD
+                near_horizontal = cell_y < GRID_THRESHOLD or cell_y > CELL_SIZE - GRID_THRESHOLD
+
+                if near_vertical or near_horizontal:
+                    try:
+                        if self.game.board.can_place_wall_at_position(self.current_wall_orientation, pos):
+                            # Create a transparent surface for the wall preview
+                            if self.current_wall_orientation == WallOrientation.HORIZONTAL:
+                                width = CELL_SIZE * 2 - GRID_THICKNESS
+                                preview_surface = pygame.Surface((width, WALL_THICKNESS), pygame.SRCALPHA)
+                                pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
+                                               preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
+                                x = pos.col * CELL_SIZE + GRID_THICKNESS // 2
+                                y = (pos.row + 1) * CELL_SIZE - WALL_THICKNESS // 2
+                                self.screen.blit(preview_surface, (x, y))
+                            else:
+                                height = CELL_SIZE * 2 - GRID_THICKNESS
+                                preview_surface = pygame.Surface((WALL_THICKNESS, height), pygame.SRCALPHA)
+                                pygame.draw.rect(preview_surface, WALL_PREVIEW_COLOR, 
+                                               preview_surface.get_rect(), border_radius=WALL_CORNER_RADIUS)
+                                x = (pos.col + 1) * CELL_SIZE - WALL_THICKNESS // 2
+                                y = pos.row * CELL_SIZE + GRID_THICKNESS // 2
+                                self.screen.blit(preview_surface, (x, y))
+                    except (ValueError, IndexError):
+                        pass
 
     def draw_info(self):
         font = pygame.font.SysFont(None, 24)
@@ -277,8 +292,8 @@ class AnimatedBoard:
         current_player_text = "Red Player" if current_player == 1 else "Blue Player"
 
         info_text = f"Red Player walls: {player1_walls} | Blue Player walls: {player2_walls} | Current player: {current_player_text}"
-        text_surface = font.render(info_text, True, (255, 255, 255))
-        text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))
+        text_surface = font.render(info_text, True, (199, 197, 187))
+        text_rect = text_surface.get_rect(left=60, centery=SCREEN_HEIGHT - 30)
         self.screen.blit(text_surface, text_rect)
 
         # Display path blocked message
@@ -292,14 +307,23 @@ class AnimatedBoard:
                 error_text2 = "to the goal for each pawn!"
                 error_font = pygame.font.SysFont(None, 42)
                 
-                # Render first line (moved up by adjusting Y coordinate)
+                # Render first line (centered)
                 error_surface1 = error_font.render(error_text1, True, ERROR_COLOR)
-                error_rect1 = error_surface1.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 180))
-                self.screen.blit(error_surface1, error_rect1)
+                error_rect1 = error_surface1.get_rect(center=(SCREEN_WIDTH // 2, (4 * CELL_SIZE) + (CELL_SIZE // 2) - 20))
                 
-                # Render second line (moved up by adjusting Y coordinate)
+                # Render second line (centered)
                 error_surface2 = error_font.render(error_text2, True, ERROR_COLOR)
-                error_rect2 = error_surface2.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 140))
+                error_rect2 = error_surface2.get_rect(center=(SCREEN_WIDTH // 2, (4 * CELL_SIZE) + (CELL_SIZE // 2) + 20))
+                
+                # Create a semi-transparent surface for the background
+                background_surface = pygame.Surface((error_rect1.width + 20, error_rect2.bottom - error_rect1.top + 20), pygame.SRCALPHA)
+                background_surface.fill((199, 197, 187, 184))  # Similar to WALL_COLOR with transparency
+                
+                # Blit the background surface
+                self.screen.blit(background_surface, (error_rect1.left - 10, error_rect1.top - 10))
+                
+                # Blit the error text on top of the background
+                self.screen.blit(error_surface1, error_rect1)
                 self.screen.blit(error_surface2, error_rect2)
             else:
                 self.error_message_start = None
@@ -309,8 +333,18 @@ class AnimatedBoard:
             winner = self.game.get_winner()
             winner_text = "Red Player wins!" if winner == 1 else "Blue Player wins!"
             winner_font = pygame.font.SysFont(None, 48)  # Bigger font for the winner message
-            winner_surface = winner_font.render(winner_text, True, (255, 255, 0))
-            self.screen.blit(winner_surface, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50))
+            winner_surface = winner_font.render(winner_text, True, (13, 89, 2))
+            winner_rect = winner_surface.get_rect(center=(SCREEN_WIDTH // 2, (4 * CELL_SIZE) + (CELL_SIZE // 2)))
+            
+            # Create a semi-transparent surface for the background
+            background_surface = pygame.Surface((winner_rect.width + 20, winner_rect.height + 20), pygame.SRCALPHA)
+            background_surface.fill((199, 197, 187, 184))  # Similar to WALL_COLOR with transparency
+            
+            # Blit the background surface
+            self.screen.blit(background_surface, (winner_rect.left - 10, winner_rect.top - 10))
+            
+            # Blit the winner text on top of the background
+            self.screen.blit(winner_surface, winner_rect)
 
     def draw_reset_button(self):
         """Draw the reset button with hover effect"""
@@ -333,31 +367,27 @@ class AnimatedBoard:
         current_player = self.game.get_current_player()
         current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
 
-        # Check if clicking on current player's pawn
-        if board_pos == current_pawn.position:
-            if self.selected_pawn == current_pawn:
-                # Clicking the same pawn again - toggle selection
-                self.selected_pawn = None
-                self.valid_moves = []
-                self.pawn_selected_for_move = False
-            else:
-                # First time clicking the pawn - select it and show moves
-                self.selected_pawn = current_pawn
-                self.valid_moves = self.game.board.get_all_valid_pawn_moves(self.selected_pawn)
-                self.pawn_selected_for_move = True
         # Check if clicking on a valid move
-        elif self.selected_pawn and self.pawn_selected_for_move and board_pos in self.valid_moves:
+        if board_pos in self.current_pawn_moves:
             self.game.move_pawn(board_pos)
-            self.selected_pawn = None
+            self.current_pawn_moves = []
             self.valid_moves = []
+            self.wall_preview_pos = None
+            self.selected_pawn = None
             self.pawn_selected_for_move = False
-        # Try to place wall if not moving pawn
-        elif not self.pawn_selected_for_move:
+        else:
+            # Try to place wall if not moving pawn
             wall_pos = self.get_wall_placement_info(pos)
             if self.game.place_wall(self.current_wall_orientation, wall_pos):
                 self.wall_preview_pos = None
                 self.selected_pawn = None
                 self.valid_moves = []
+            else:
+                # Update current player's possible moves
+                try:
+                    self.current_pawn_moves = self.game.board.get_all_valid_pawn_moves(current_pawn)
+                except ValueError:
+                    self.current_pawn_moves = []
 
     def run(self):
         running = True
@@ -366,12 +396,9 @@ class AnimatedBoard:
             if not self.game.is_game_over():
                 current_player = self.game.get_current_player()
                 current_pawn = self.game.board.pawn1 if current_player == 1 else self.game.board.pawn2
-                if not self.selected_pawn:
-                    try:
-                        self.current_pawn_moves = self.game.board.get_all_valid_pawn_moves(current_pawn)
-                    except ValueError:
-                        self.current_pawn_moves = []
-                else:
+                try:
+                    self.current_pawn_moves = self.game.board.get_all_valid_pawn_moves(current_pawn)
+                except ValueError:
                     self.current_pawn_moves = []
             else:
                 # Clear all move indicators and previews when game is over
